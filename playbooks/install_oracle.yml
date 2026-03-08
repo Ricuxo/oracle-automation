@@ -1,0 +1,8 @@
+---
+- name: Prepare host for Oracle installation
+  hosts: dbservers
+  become: true
+  gather_facts: true
+
+  roles:
+    - orahost_os_prereqs

@@ -1,0 +1,4 @@
+---
+# defaults file for roles/os_prereqs
+
+oracle_preinstall_package: oracle-database-preinstall-19c

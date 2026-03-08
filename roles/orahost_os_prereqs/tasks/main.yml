@@ -1,0 +1,28 @@
+---
+
+- name: Install Oracle preinstall package
+  package:
+    name: "{{ oracle_preinstall_package }}"
+    state: present
+
+- name: Ensure chrony is installed
+  package:
+    name: chrony
+    state: present
+
+- name: Ensure chronyd service is enabled and running
+  service:
+    name: chronyd
+    state: started
+    enabled: true
+
+- name: Set SELinux to permissive
+  selinux:
+    policy: targeted
+    state: permissive
+
+- name: Stop and disable firewalld
+  service:
+    name: firewalld
+    state: stopped
+    enabled: false
