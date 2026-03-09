@@ -1,0 +1,40 @@
+# Grid Infrastructure Response File – Standalone (SI-ASM)
+# Gerenciado pelo Ansible – oragrid_install
+# Gerado em: {{ ansible_date_time.iso8601 }}
+# Oracle Version: {{ oracle_version }}
+
+oracle.install.responseFileVersion=/oracle/install/rspfmt_crsinstall_response_schema_v19.0.0
+
+# ── Opção de instalação ───────────────────────────────────────────────────────
+# HA_CONFIG = Standalone com ASM (Single Instance)
+# CRS_CONFIG = RAC
+oracle.install.option=HA_CONFIG
+
+# ── Diretórios ────────────────────────────────────────────────────────────────
+ORACLE_BASE={{ grid_base }}
+oracle.install.asm.OSDBA=asmdba
+oracle.install.asm.OSOPER=asmoper
+oracle.install.asm.OSASM=asmadmin
+
+# ── Configuração ASM ──────────────────────────────────────────────────────────
+oracle.install.crs.config.storageOption=LOCAL_ASM_STORAGE
+oracle.install.asm.diskGroup.name={{ grid_ocr_diskgroup }}
+oracle.install.asm.diskGroup.redundancy={{ grid_ocr_redundancy }}
+oracle.install.asm.diskGroup.AUSize=4
+oracle.install.asm.diskGroup.disks={{ grid_ocr_disks | join(',') }}
+oracle.install.asm.diskGroup.diskDiscoveryString={{ oracle_asm_disk_discovery }}
+oracle.install.asm.monitorPassword={{ oracle_asm_monitor_password }}
+
+# ── Configuração de rede ──────────────────────────────────────────────────────
+oracle.install.crs.config.gpnp.scanName=
+oracle.install.crs.config.gpnp.scanPort=
+oracle.install.crs.config.clusterName=
+oracle.install.crs.config.clusterNodes=
+oracle.install.crs.config.networkInterfaceList=
+
+# ── Atualizações automáticas ──────────────────────────────────────────────────
+oracle.installer.autoupdates.option=SKIP_UPDATES
+
+# ── Configurações de segurança ────────────────────────────────────────────────
+DECLINE_SECURITY_UPDATES=true
+oracle.install.db.rootconfig.executeRootScript=false

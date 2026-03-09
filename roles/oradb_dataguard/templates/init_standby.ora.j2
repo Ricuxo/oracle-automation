@@ -1,0 +1,50 @@
+# init{{ dg_standby_sid }}.ora – Standby temporário para RMAN duplicate
+# Gerenciado pelo Ansible – oradb_dataguard
+# Gerado em: {{ ansible_date_time.iso8601 }}
+# Após duplicate o spfile será criado automaticamente
+
+# ── Identificação ─────────────────────────────────────────────────────────────
+db_name={{ dg_primary_db_name }}
+db_unique_name={{ dg_standby_db_unique_name }}
+instance_name={{ dg_standby_sid }}
+
+# ── Memória ───────────────────────────────────────────────────────────────────
+sga_target={{ oracle_sga_target_mb | default(2048) }}m
+pga_aggregate_target={{ oracle_pga_aggregate_target_mb | default(512) }}m
+
+# ── Auditoria ─────────────────────────────────────────────────────────────────
+audit_file_dest={{ oracle_base }}/admin/{{ dg_standby_db_unique_name }}/adump
+audit_trail=db
+
+# ── Diag ──────────────────────────────────────────────────────────────────────
+diagnostic_dest={{ oracle_base }}
+
+# ── Data Guard ────────────────────────────────────────────────────────────────
+log_archive_config=DG_CONFIG=({{ dg_primary_db_unique_name }},{{ dg_standby_db_unique_name }})
+log_archive_dest_1='LOCATION=USE_DB_RECOVERY_FILE_DEST VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME={{ dg_standby_db_unique_name }}'
+log_archive_dest_state_1=ENABLE
+fal_server={{ dg_primary_db_unique_name }}
+fal_client={{ dg_standby_db_unique_name }}
+standby_file_management=AUTO
+remote_login_passwordfile=EXCLUSIVE
+log_archive_format=%t_%s_%r.dbf
+
+{% if oracle_storage_type == 'filesystem' %}
+# ── Conversão de caminhos (filesystem) ───────────────────────────────────────
+db_file_name_convert='{{ dg_primary_host }}:{{ oracle_data_dir | default('/u02/oradata') }}/{{ dg_primary_db_name }}','{{ dg_standby_data_dir }}/{{ dg_primary_db_name }}'
+log_file_name_convert='{{ dg_primary_host }}:{{ oracle_data_dir | default('/u02/oradata') }}/{{ dg_primary_db_name }}','{{ dg_standby_redo_dir }}'
+
+# ── FRA filesystem ────────────────────────────────────────────────────────────
+db_recovery_file_dest={{ dg_standby_fra_dir }}/{{ dg_primary_db_name }}
+db_recovery_file_dest_size={{ oracle_fra_size_gb | default(20) }}g
+
+{% else %}
+# ── Conversão de caminhos (ASM) ───────────────────────────────────────────────
+db_file_name_convert='+{{ dg_standby_data_diskgroup }}','+{{ dg_standby_data_diskgroup }}'
+log_file_name_convert='+{{ dg_standby_data_diskgroup }}','+{{ dg_standby_data_diskgroup }}'
+
+# ── FRA ASM ───────────────────────────────────────────────────────────────────
+db_recovery_file_dest=+{{ dg_standby_reco_diskgroup }}
+db_recovery_file_dest_size={{ oracle_fra_size_gb | default(20) }}g
+
+{% endif %}

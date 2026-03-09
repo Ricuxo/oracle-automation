@@ -1,0 +1,30 @@
+---
+# =============================================================================
+# orahost_bootstrap – Default Variables
+# Responsabilidade: criar usuário de automação e configurar acesso SSH
+# Executado uma única vez como root ou usuário inicial do SO
+# =============================================================================
+
+# ── Usuário de automação ──────────────────────────────────────────────────────
+bootstrap_user: oracle_ansible
+bootstrap_user_uid: 54400
+bootstrap_user_group: oracle_ansible
+bootstrap_user_shell: /bin/bash
+bootstrap_user_home: "/home/{{ bootstrap_user }}"
+bootstrap_user_comment: "Ansible Automation User"
+
+# ── Chave SSH ─────────────────────────────────────────────────────────────────
+# Chave pública a ser distribuída para o usuário de automação
+# Definir via vault ou group_vars
+bootstrap_ssh_public_key: ""
+# Exemplo:
+# bootstrap_ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2E... ansible@controller"
+
+# ── Sudo ──────────────────────────────────────────────────────────────────────
+bootstrap_sudo_nopasswd: true
+bootstrap_sudoers_file: "/etc/sudoers.d/{{ bootstrap_user }}"
+
+# ── Senha do usuário ──────────────────────────────────────────────────────────
+# Definir via ansible-vault
+# bootstrap_user_password: "{{ vault_bootstrap_user_password }}"
+bootstrap_user_password: "!"    # conta bloqueada por padrão, acesso apenas via SSH

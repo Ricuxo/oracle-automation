@@ -1,0 +1,29 @@
+# tnsnames.ora
+# Gerenciado pelo Ansible – oradb_listener
+# Gerado em: {{ ansible_date_time.iso8601 }}
+
+{{ oracle_db_name }} =
+  (DESCRIPTION =
+    (ADDRESS =
+      (PROTOCOL = {{ oracle_listener_protocol }})
+      (HOST = {{ ansible_fqdn }})
+      (PORT = {{ oracle_listener_port }})
+    )
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = {{ oracle_db_unique_name }})
+    )
+  )
+
+{{ oracle_pdb_name }} =
+  (DESCRIPTION =
+    (ADDRESS =
+      (PROTOCOL = {{ oracle_listener_protocol }})
+      (HOST = {{ ansible_fqdn }})
+      (PORT = {{ oracle_listener_port }})
+    )
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = {{ oracle_pdb_name | lower }}.{{ ansible_domain }})
+    )
+  )

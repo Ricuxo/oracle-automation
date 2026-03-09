@@ -1,0 +1,85 @@
+---
+# =============================================================================
+# oradb_dataguard – Configurar Data Guard Broker
+# Executado no host primary via delegate_to
+# =============================================================================
+
+- name: "configure_broker | Habilitar broker no standby"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_standby_oracle_home }}
+    export ORACLE_SID={{ dg_standby_sid }}
+    {{ dg_standby_oracle_home }}/bin/sqlplus -s sys/{{ dg_sys_password }}@{{ dg_standby_db_unique_name }} as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    ALTER SYSTEM SET dg_broker_start=TRUE SCOPE=both;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _broker_start_standby
+  changed_when: _broker_start_standby.rc == 0
+  no_log: true
+  tags: [configure_broker]
+
+- name: "configure_broker | Aguardar broker inicializar"
+  ansible.builtin.pause:
+    seconds: 30
+    prompt: "Aguardando Data Guard Broker inicializar em ambos os hosts..."
+  tags: [configure_broker]
+
+- name: "configure_broker | Criar configuração broker"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    export TNS_ADMIN={{ dg_tns_admin }}
+    {{ dg_primary_oracle_home }}/bin/dgmgrl sys/{{ dg_sys_password }}@{{ dg_primary_db_unique_name }} << 'DGEOF'
+    CREATE CONFIGURATION {{ dg_broker_config_name }}
+      AS PRIMARY DATABASE IS {{ dg_primary_db_unique_name }}
+      CONNECT IDENTIFIER IS {{ dg_primary_db_unique_name }};
+    ADD DATABASE {{ dg_standby_db_unique_name }}
+      AS CONNECT IDENTIFIER IS {{ dg_standby_db_unique_name }}
+      MAINTAINED AS PHYSICAL;
+    ENABLE CONFIGURATION;
+    EXIT;
+    DGEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _broker_create
+  changed_when: "'Enabled.' in _broker_create.stdout"
+  failed_when:
+    - _broker_create.rc != 0
+    - "'ORA-16existing' not in _broker_create.stdout"
+    - "'already exists' not in _broker_create.stdout"
+  no_log: true
+  tags: [configure_broker]
+
+- name: "configure_broker | Configurar modo de proteção"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    export TNS_ADMIN={{ dg_tns_admin }}
+    {{ dg_primary_oracle_home }}/bin/dgmgrl sys/{{ dg_sys_password }}@{{ dg_primary_db_unique_name }} << 'DGEOF'
+    EDIT CONFIGURATION SET PROTECTION MODE AS {{ dg_protection_mode }};
+    EXIT;
+    DGEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _broker_protection
+  changed_when: _broker_protection.rc == 0
+  no_log: true
+  tags: [configure_broker]
+
+- name: "configure_broker | Configurar redo transport"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    export TNS_ADMIN={{ dg_tns_admin }}
+    {{ dg_primary_oracle_home }}/bin/dgmgrl sys/{{ dg_sys_password }}@{{ dg_primary_db_unique_name }} << 'DGEOF'
+    EDIT DATABASE {{ dg_standby_db_unique_name }} SET PROPERTY LogXptMode='{{ dg_redo_transport }}';
+    EXIT;
+    DGEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _broker_transport
+  changed_when: _broker_transport.rc == 0
+  no_log: true
+  tags: [configure_broker]

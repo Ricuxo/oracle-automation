@@ -1,0 +1,80 @@
+---
+# =============================================================================
+# oradb_patching – Tasks
+# Responsabilidade: aplicação de patches Oracle via OPatch / OPatchAuto
+# =============================================================================
+
+- name: "oradb_patching | Verificar variáveis obrigatórias"
+  ansible.builtin.assert:
+    that:
+      - oracle_patch_id | length > 0
+      - oracle_patch_zip | length > 0
+    fail_msg: >
+      Variáveis obrigatórias não definidas.
+      Defina oracle_patch_id e oracle_patch_zip antes de executar.
+  tags: [oradb_patching]
+
+- name: "oradb_patching | Verificar se patch zip existe"
+  ansible.builtin.stat:
+    path: "{{ oracle_stage_dir }}/{{ oracle_patch_zip }}"
+  register: _patch_zip_stat
+  tags: [oradb_patching]
+
+- name: "oradb_patching | Falhar se patch zip não encontrado"
+  ansible.builtin.assert:
+    that: _patch_zip_stat.stat.exists
+    fail_msg: >
+      Patch zip não encontrado em {{ oracle_stage_dir }}/{{ oracle_patch_zip }}.
+      Copie o patch para {{ oracle_stage_dir }} antes de executar.
+  tags: [oradb_patching]
+
+- name: "oradb_patching | Verificar versão OPatch"
+  ansible.builtin.import_tasks: check_opatch.yml
+  tags: [oradb_patching, check_opatch]
+
+- name: "oradb_patching | Inventário pré-patch"
+  ansible.builtin.import_tasks: pre_inventory.yml
+  tags: [oradb_patching, inventory]
+
+- name: "oradb_patching | Backup pré-patch"
+  ansible.builtin.import_tasks: pre_backup.yml
+  when: oracle_patch_backup_spfile | bool
+  tags: [oradb_patching, backup]
+
+- name: "oradb_patching | Descompactar patch"
+  ansible.builtin.import_tasks: stage_patch.yml
+  tags: [oradb_patching, stage]
+
+- name: "oradb_patching | Aplicar patch – SI"
+  ansible.builtin.import_tasks: apply_si.yml
+  when: oracle_deployment_type == 'standalone'
+  tags: [oradb_patching, apply]
+
+- name: "oradb_patching | Aplicar patch – RAC rolling"
+  ansible.builtin.import_tasks: apply_rac_rolling.yml
+  when:
+    - oracle_deployment_type == 'rac'
+    - oracle_patch_mode == 'rolling'
+  tags: [oradb_patching, apply, rolling]
+
+- name: "oradb_patching | Aplicar patch – RAC nonrolling"
+  ansible.builtin.import_tasks: apply_rac_nonrolling.yml
+  when:
+    - oracle_deployment_type == 'rac'
+    - oracle_patch_mode == 'nonrolling'
+  tags: [oradb_patching, apply, nonrolling]
+
+- name: "oradb_patching | Executar datapatch"
+  ansible.builtin.import_tasks: datapatch.yml
+  when: oracle_patch_run_datapatch | bool
+  tags: [oradb_patching, datapatch]
+
+- name: "oradb_patching | Inventário pós-patch"
+  ansible.builtin.import_tasks: post_inventory.yml
+  when: oracle_patch_validate | bool
+  tags: [oradb_patching, inventory]
+
+- name: "oradb_patching | Validar patch aplicado"
+  ansible.builtin.import_tasks: validate.yml
+  when: oracle_patch_validate | bool
+  tags: [oradb_patching, validate]

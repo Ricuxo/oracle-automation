@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# oradb_listener – Validar listener
+# =============================================================================
+
+- name: "validate | Verificar status listener standalone"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    {{ oracle_home }}/bin/lsnrctl status {{ oracle_listener_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _lsnr_validate
+  changed_when: false
+  failed_when: false
+  when: oracle_storage_type == 'filesystem'
+  tags: [validate]
+
+- name: "validate | Assert listener está rodando (filesystem)"
+  ansible.builtin.assert:
+    that: "'TNS-12541' not in _lsnr_validate.stdout"
+    fail_msg: >
+      Listener {{ oracle_listener_name }} não está rodando em {{ inventory_hostname }}.
+      Verifique os logs em {{ oracle_base }}/diag/tnslsnr.
+  when: oracle_storage_type == 'filesystem'
+  tags: [validate]
+
+- name: "validate | Verificar status listener Grid (ASM)"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/lsnrctl status
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _lsnr_grid_validate
+  changed_when: false
+  failed_when: false
+  when: oracle_storage_type == 'asm'
+  tags: [validate]
+
+- name: "validate | Assert listener Grid está rodando (ASM)"
+  ansible.builtin.assert:
+    that: "'TNS-12541' not in _lsnr_grid_validate.stdout"
+    fail_msg: >
+      Listener Grid não está rodando em {{ inventory_hostname }}.
+      Verifique os logs em {{ grid_base }}/diag/tnslsnr.
+  when: oracle_storage_type == 'asm'
+  tags: [validate]
+
+- name: "validate | Exibir status listener"
+  ansible.builtin.debug:
+    msg: "{{ _lsnr_validate.stdout_lines if oracle_storage_type == 'filesystem' else _lsnr_grid_validate.stdout_lines }}"
+  tags: [validate]

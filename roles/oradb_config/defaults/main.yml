@@ -1,0 +1,65 @@
+---
+# =============================================================================
+# oradb_config – Default Variables
+# Responsabilidade: configuração pós-criação do banco
+# parâmetros, archivelog, FRA, systemd, Oracle Restart
+# =============================================================================
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+oracle_user: oracle
+oracle_group: oinstall
+grid_user: grid
+
+# ── Diretórios ────────────────────────────────────────────────────────────────
+oracle_home: "{{ oracle_home_base }}/{{ oracle_version }}/dbhome_1"
+oracle_home_base: /u01/app/oracle/product
+oracle_base: /u01/app/oracle
+grid_home: "/u01/app/{{ oracle_version }}/grid"
+
+# ── Versão Oracle ─────────────────────────────────────────────────────────────
+oracle_version: "19.3.0"
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+oracle_deployment_type: standalone
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+oracle_storage_type: filesystem
+
+# ── Identificação do banco ────────────────────────────────────────────────────
+oracle_db_name: ORCL
+oracle_sid: "{{ oracle_db_name }}"
+oracle_db_unique_name: "{{ oracle_db_name }}"
+oracle_pdb_name: PDB1
+
+# ── Archivelog ────────────────────────────────────────────────────────────────
+oracle_enable_archivelog: true
+oracle_archive_dest: ""
+# filesystem: deixar vazio usa FRA
+# ASM: "+RECO" por exemplo
+
+# ── FRA ───────────────────────────────────────────────────────────────────────
+oracle_fra_size_gb: 20
+oracle_fra_dir: /u03/fra
+oracle_asm_reco_diskgroup: RECO
+
+# ── Parâmetros de inicialização ───────────────────────────────────────────────
+oracle_db_parameters: []
+# Exemplo:
+# oracle_db_parameters:
+#   - { name: "db_block_size",              value: "8192",    scope: spfile }
+#   - { name: "processes",                  value: "300",     scope: both   }
+#   - { name: "open_cursors",               value: "300",     scope: both   }
+#   - { name: "session_cached_cursors",     value: "50",      scope: both   }
+#   - { name: "undo_tablespace",            value: "UNDOTBS1",scope: both   }
+#   - { name: "undo_retention",             value: "900",     scope: both   }
+#   - { name: "audit_trail",                value: "db",      scope: spfile }
+#   - { name: "enable_pluggable_database",  value: "true",    scope: spfile }
+
+# ── Systemd para banco (filesystem standalone) ────────────────────────────────
+oracle_db_systemd: true
+
+# ── Oracle Restart (ASM standalone) ──────────────────────────────────────────
+oracle_restart_register: true
+
+# ── PDB autostart ─────────────────────────────────────────────────────────────
+oracle_pdb_autostart: true

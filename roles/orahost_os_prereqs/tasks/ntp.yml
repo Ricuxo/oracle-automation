@@ -1,0 +1,33 @@
+---
+# =============================================================================
+# orahost_os_prereqs – NTP/Chrony
+# Sincronização de clock crítica para RAC e licenciamento Oracle
+# =============================================================================
+
+- name: "ntp | Instalar chrony"
+  ansible.builtin.package:
+    name: chrony
+    state: present
+  tags: [ntp]
+
+- name: "ntp | Configurar chrony.conf"
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart_chronyd
+  tags: [ntp]
+
+- name: "ntp | Habilitar e iniciar chronyd"
+  ansible.builtin.systemd:
+    name: chronyd
+    enabled: true
+    state: started
+  tags: [ntp]
+
+- name: "ntp | Forçar sincronização imediata"
+  ansible.builtin.command: chronyc makestep
+  changed_when: false
+  tags: [ntp]

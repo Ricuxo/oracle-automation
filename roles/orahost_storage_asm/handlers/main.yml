@@ -1,0 +1,17 @@
+---
+# =============================================================================
+# orahost_storage_asm – Handlers
+# =============================================================================
+
+- name: restart_oracleasm
+  ansible.builtin.systemd:
+    name: oracleasm
+    state: restarted
+
+- name: reload_udev
+  ansible.builtin.command: udevadm control --reload-rules
+  changed_when: false
+
+- name: trigger_udev
+  ansible.builtin.command: udevadm trigger --type=devices --action=change
+  changed_when: false

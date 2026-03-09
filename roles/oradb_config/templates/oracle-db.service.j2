@@ -1,0 +1,30 @@
+# /etc/systemd/system/oracle-db-{{ oracle_sid | lower }}.service
+# Gerenciado pelo Ansible – oradb_config
+# Gerado em: {{ ansible_date_time.iso8601 }}
+
+[Unit]
+Description=Oracle Database {{ oracle_sid }}
+After=network.target
+{% if oracle_listener_systemd | default(false) | bool %}
+After=oracle-listener-{{ oracle_listener_name | default('listener') | lower }}.service
+Requires=oracle-listener-{{ oracle_listener_name | default('listener') | lower }}.service
+{% endif %}
+
+[Service]
+Type=forking
+User={{ oracle_user }}
+Group={{ oracle_group }}
+Environment="ORACLE_HOME={{ oracle_home }}"
+Environment="ORACLE_BASE={{ oracle_base }}"
+Environment="ORACLE_SID={{ oracle_sid }}"
+Environment="PATH={{ oracle_home }}/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart={{ oracle_home }}/bin/dbstart {{ oracle_home }}
+ExecStop={{ oracle_home }}/bin/dbshut {{ oracle_home }}
+Restart=on-failure
+RestartSec=60
+TimeoutStartSec=600
+TimeoutStopSec=600
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

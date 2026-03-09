@@ -1,0 +1,84 @@
+---
+# =============================================================================
+# oradb_dataguard – Default Variables
+# Responsabilidade: configuração do Data Guard Broker
+# Suporta filesystem e ASM
+# =============================================================================
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+oracle_user: oracle
+oracle_group: oinstall
+grid_user: grid
+
+# ── Diretórios ────────────────────────────────────────────────────────────────
+oracle_home: "{{ oracle_home_base }}/{{ oracle_version }}/dbhome_1"
+oracle_home_base: /u01/app/oracle/product
+oracle_base: /u01/app/oracle
+grid_home: "/u01/app/{{ oracle_version }}/grid"
+
+# ── Versão Oracle ─────────────────────────────────────────────────────────────
+oracle_version: "19.3.0"
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+oracle_deployment_type: standalone
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+# Valores válidos: filesystem | asm
+oracle_storage_type: filesystem
+
+# ── Primary database ──────────────────────────────────────────────────────────
+dg_primary_db_name: ORCL
+dg_primary_db_unique_name: ORCL_PRI
+dg_primary_host: ""
+dg_primary_sid: "{{ dg_primary_db_name }}"
+dg_primary_oracle_home: "{{ oracle_home }}"
+dg_primary_listener_port: 1521
+
+# ── Standby database ──────────────────────────────────────────────────────────
+dg_standby_db_unique_name: ORCL_STB
+dg_standby_host: ""
+dg_standby_sid: "{{ dg_primary_db_name }}"
+dg_standby_oracle_home: "{{ oracle_home }}"
+dg_standby_listener_port: 1521
+
+# ── Data Guard Broker ─────────────────────────────────────────────────────────
+dg_broker_config_name: DG_CONFIG
+dg_broker_start: true
+
+# ── Tipo de standby ───────────────────────────────────────────────────────────
+# Valores válidos: PHYSICAL | LOGICAL | SNAPSHOT
+dg_standby_type: PHYSICAL
+
+# ── Proteção ──────────────────────────────────────────────────────────────────
+# Valores válidos: MAXIMUM PROTECTION | MAXIMUM AVAILABILITY | MAXIMUM PERFORMANCE
+dg_protection_mode: MAXIMUM PERFORMANCE
+
+# ── Redo transport ────────────────────────────────────────────────────────────
+# Valores válidos: SYNC | ASYNC
+dg_redo_transport: ASYNC
+
+# ── TNS ───────────────────────────────────────────────────────────────────────
+dg_tns_admin: "{{ oracle_home }}/network/admin"
+
+# ── Storage filesystem ────────────────────────────────────────────────────────
+dg_standby_data_dir: /u02/oradata
+dg_standby_fra_dir: /u03/fra
+dg_standby_redo_dir: /u04/redo
+
+# ── Storage ASM ───────────────────────────────────────────────────────────────
+dg_standby_data_diskgroup: DATA
+dg_standby_reco_diskgroup: RECO
+
+# ── Standby redo logs ─────────────────────────────────────────────────────────
+# Tamanho deve ser igual ao redo log do primary
+dg_standby_redo_log_size_mb: 200
+# Quantidade = grupos primary + 1
+dg_standby_redo_log_groups: 4
+
+# ── RMAN duplicate ────────────────────────────────────────────────────────────
+dg_rman_channels: 4
+dg_rman_compression: BASIC
+dg_rman_script: "{{ oracle_base }}/rman_duplicate_{{ dg_standby_db_unique_name }}.rman"
+
+# ── Senhas ────────────────────────────────────────────────────────────────────
+dg_sys_password: "{{ vault_oracle_sys_password }}"

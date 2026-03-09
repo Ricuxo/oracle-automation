@@ -1,0 +1,20 @@
+# /etc/chrony.conf
+# Gerenciado pelo Ansible – orahost_os_prereqs
+# Alterações manuais serão sobrescritas
+
+# ── Servidores NTP ────────────────────────────────────────────────────────────
+{% for server in oracle_chrony_servers %}
+server {{ server }} iburst
+{% endfor %}
+
+# ── Configurações gerais ──────────────────────────────────────────────────────
+driftfile /var/lib/chrony/drift
+
+# Permite ajuste de clock nas primeiras 3 sincronizações
+makestep 1.0 3
+
+# Sincroniza o RTC com o clock do sistema
+rtcsync
+
+# Diretório de logs
+logdir /var/log/chrony

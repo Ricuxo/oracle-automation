@@ -1,0 +1,13 @@
+---
+# =============================================================================
+# oradb_config – Handlers
+# =============================================================================
+
+- name: systemd_daemon_reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: enable_oracle_db_service
+  ansible.builtin.systemd:
+    name: "oracle-db-{{ oracle_sid | lower }}"
+    enabled: true

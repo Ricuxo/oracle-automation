@@ -1,28 +1,40 @@
 ---
+# =============================================================================
+# orahost_os_prereqs – Tasks
+# Responsabilidade: pré-requisitos de SO via oracle-preinstall
+# =============================================================================
 
-- name: Install Oracle preinstall package
-  package:
+- name: "orahost_os_prereqs | Instalar oracle-database-preinstall"
+  ansible.builtin.package:
     name: "{{ oracle_preinstall_package }}"
     state: present
+  retries: 3
+  delay: 10
+  register: _preinstall_result
+  until: _preinstall_result is succeeded
+  tags: [orahost_os_prereqs, packages]
 
-- name: Ensure chrony is installed
-  package:
-    name: chrony
-    state: present
-
-- name: Ensure chronyd service is enabled and running
-  service:
-    name: chronyd
-    state: started
-    enabled: true
-
-- name: Set SELinux to permissive
-  selinux:
+- name: "orahost_os_prereqs | Configurar SELinux"
+  ansible.posix.selinux:
     policy: targeted
-    state: permissive
+    state: "{{ oracle_selinux_state }}"
+  tags: [orahost_os_prereqs, selinux]
 
-- name: Stop and disable firewalld
-  service:
-    name: firewalld
-    state: stopped
-    enabled: false
+- name: "orahost_os_prereqs | Desabilitar Transparent HugePages"
+  ansible.builtin.import_tasks: thp.yml
+  when: oracle_thp_disable | bool
+  tags: [orahost_os_prereqs, thp]
+
+- name: "orahost_os_prereqs | Configurar HugePages"
+  ansible.builtin.import_tasks: hugepages.yml
+  when: oracle_hugepages_enable | bool
+  tags: [orahost_os_prereqs, hugepages]
+
+- name: "orahost_os_prereqs | Configurar NTP/Chrony"
+  ansible.builtin.import_tasks: ntp.yml
+  tags: [orahost_os_prereqs, ntp]
+
+- name: "orahost_os_prereqs | Configurar Firewall"
+  ansible.builtin.import_tasks: firewall.yml
+  when: oracle_firewall_manage | bool
+  tags: [orahost_os_prereqs, firewall]

@@ -1,0 +1,65 @@
+---
+# =============================================================================
+# orahost_storage_asm – Tasks
+# Responsabilidade: preparação de discos para ASM
+# Seleciona driver conforme oracle_asm_driver
+# =============================================================================
+
+- name: "orahost_storage_asm | Verificar se role é aplicável"
+  ansible.builtin.assert:
+    that: oracle_storage_type == 'asm'
+    fail_msg: >
+      orahost_storage_asm é exclusiva para oracle_storage_type = asm.
+      Para filesystem utilize a role orahost_storage.
+  tags: [orahost_storage_asm]
+
+- name: "orahost_storage_asm | Verificar se discos foram definidos"
+  ansible.builtin.assert:
+    that: oracle_asm_disks | length > 0
+    fail_msg: >
+      Nenhum disco definido em oracle_asm_disks.
+      Revise o arquivo group_vars ou host_vars.
+  tags: [orahost_storage_asm]
+
+- name: "orahost_storage_asm | Verificar se driver é válido"
+  ansible.builtin.assert:
+    that: oracle_asm_driver in ['asmlib', 'asmfd', 'udev']
+    fail_msg: >
+      oracle_asm_driver inválido: {{ oracle_asm_driver }}.
+      Valores válidos: asmlib | asmfd | udev
+  tags: [orahost_storage_asm]
+
+- name: "orahost_storage_asm | Verificar se discos existem no host"
+  ansible.builtin.stat:
+    path: "{{ item.device }}"
+  register: _disk_stat
+  loop: "{{ oracle_asm_disks }}"
+  loop_control:
+    label: "{{ item.device }}"
+  tags: [orahost_storage_asm]
+
+- name: "orahost_storage_asm | Falhar se disco não encontrado"
+  ansible.builtin.assert:
+    that: item.stat.exists
+    fail_msg: >
+      Disco {{ item.item.device }} não encontrado em {{ inventory_hostname }}.
+      Verifique se o disco está conectado e visível ao sistema operacional.
+  loop: "{{ _disk_stat.results }}"
+  loop_control:
+    label: "{{ item.item.device }}"
+  tags: [orahost_storage_asm]
+
+- name: "orahost_storage_asm | Configurar ASMLib"
+  ansible.builtin.import_tasks: asmlib.yml
+  when: oracle_asm_driver == 'asmlib'
+  tags: [orahost_storage_asm, asmlib]
+
+- name: "orahost_storage_asm | Configurar ASMFD"
+  ansible.builtin.import_tasks: asmfd.yml
+  when: oracle_asm_driver == 'asmfd'
+  tags: [orahost_storage_asm, asmfd]
+
+- name: "orahost_storage_asm | Configurar udev"
+  ansible.builtin.import_tasks: udev.yml
+  when: oracle_asm_driver == 'udev'
+  tags: [orahost_storage_asm, udev]

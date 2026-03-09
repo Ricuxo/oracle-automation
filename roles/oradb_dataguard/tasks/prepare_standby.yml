@@ -1,0 +1,83 @@
+---
+# =============================================================================
+# oradb_dataguard – Preparar standby
+# Executado no host standby via delegate_to
+# =============================================================================
+
+- name: "prepare_standby | Criar diretórios standby (filesystem)"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  loop:
+    - "{{ dg_standby_data_dir }}/{{ dg_primary_db_name }}"
+    - "{{ dg_standby_fra_dir }}/{{ dg_primary_db_name }}"
+    - "{{ dg_standby_redo_dir }}"
+    - "{{ oracle_base }}/admin/{{ dg_standby_db_unique_name }}/adump"
+    - "{{ oracle_base }}/admin/{{ dg_standby_db_unique_name }}/cdump"
+  loop_control:
+    label: "{{ item }}"
+  when: oracle_storage_type == 'filesystem'
+  tags: [prepare_standby]
+
+- name: "prepare_standby | Criar diretório adump standby (ASM)"
+  ansible.builtin.file:
+    path: "{{ oracle_base }}/admin/{{ dg_standby_db_unique_name }}/adump"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  when: oracle_storage_type == 'asm'
+  tags: [prepare_standby]
+
+- name: "prepare_standby | Criar init standby"
+  ansible.builtin.template:
+    src: init_standby.ora.j2
+    dest: "{{ dg_standby_oracle_home }}/dbs/init{{ dg_standby_sid }}.ora"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  tags: [prepare_standby]
+
+- name: "prepare_standby | Verificar se standby já está montado"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_standby_oracle_home }}
+    export ORACLE_SID={{ dg_standby_sid }}
+    {{ dg_standby_oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT status FROM v$instance;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _standby_status
+  changed_when: false
+  failed_when: false
+  tags: [prepare_standby]
+
+- name: "prepare_standby | Iniciar standby em nomount"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_standby_oracle_home }}
+    export ORACLE_SID={{ dg_standby_sid }}
+    {{ dg_standby_oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    STARTUP NOMOUNT;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _standby_nomount
+  changed_when: _standby_nomount.rc == 0
+  when: "'STARTED' not in _standby_status.stdout and 'MOUNTED' not in _standby_status.stdout"
+  tags: [prepare_standby]
+
+- name: "prepare_standby | Exibir status standby"
+  ansible.builtin.debug:
+    msg:
+      - "Host standby: {{ dg_standby_host }}"
+      - "SID: {{ dg_standby_sid }}"
+      - "Status: {{ _standby_status.stdout | trim | default('INICIADO AGORA') }}"
+      - "Storage: {{ oracle_storage_type }}"
+  tags: [prepare_standby]

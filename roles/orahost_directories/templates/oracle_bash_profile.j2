@@ -1,0 +1,59 @@
+# ~/.bash_profile
+# Gerenciado pelo Ansible – orahost_directories
+# Alterações manuais serão sobrescritas
+
+# ── Prompt ────────────────────────────────────────────────────────────────────
+PS1="`hostname` {\$ORACLE_SID} \$PWD > "
+
+# ── PATH base ─────────────────────────────────────────────────────────────────
+echo $PATH | /bin/grep -q "$HOME/bin" ||
+{
+        PATH=$HOME/bin:${PATH:-/usr/bin:.}
+        export PATH
+}
+
+# ── Terminal ──────────────────────────────────────────────────────────────────
+if [ -t 0 ]; then
+  stty intr ^C
+fi
+
+set -o vi
+
+export COLUMNS=300
+export LINES=100
+export EDITOR=vi
+
+umask 022
+
+# ── Variáveis Oracle ──────────────────────────────────────────────────────────
+export ORACLE_SID={{ oracle_sid | default('ORCLCDB') }}
+export ORACLE_BASE={{ oracle_base }}
+export ORACLE_HOME={{ oracle_home | default(oracle_home_base + '/' + oracle_version + '/dbhome_1') }}
+export GRID_HOME={{ grid_home }}
+export TNS_ADMIN=$ORACLE_HOME/network/admin
+export ORA_NLS33=$ORACLE_HOME/ocommon/nls/admin/data
+export ORACLE_TERM=vt100
+export SQLPATH=~/scripts
+
+# ── Variáveis de ambiente ─────────────────────────────────────────────────────
+export PATH=$PATH:$ORACLE_HOME/bin:/usr/sbin:/usr/java/bin:/usr/bin:/usr/ucb:/etc:/sbin:$ORACLE_HOME/network/lib:$ORACLE_HOME/lib:$ORACLE_HOME/network/admin:$HOME/bin:/usr/bin/X11:/usr/ccs/bin:$ORACLE_HOME/OPatch
+export NLS_LANG='AMERICAN_AMERICA.AL32UTF8'
+export NLS_DATE_FORMAT="DD-MON-YYYY HH24:MI:SS"
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:/usr/lib
+export LIBPATH=$ORACLE_HOME/lib:lib:/usr/lib
+export SHLIB_PATH=$ORACLE_HOME/lib
+export CLASSPATH=$ORACLE_HOME/JRE:$ORACLE_HOME/jlib:$ORACLE_HOME/rdbms/jlib
+export CLASSPATH=$CLASSPATH:$ORACLE_HOME/network/jlib
+export TMPDIR={{ oracle_base }}/TMPDIR
+export TEMP={{ oracle_base }}/TEMP
+
+# ── History ───────────────────────────────────────────────────────────────────
+export HISTTIMEFORMAT="%F %T "
+export HISTSIZE=10000
+
+# ── Informações iniciais ──────────────────────────────────────────────────────
+ps -ef | grep pmon
+stty erase ^?
+
+# ── Aliases ───────────────────────────────────────────────────────────────────
+. ~/.bash_aliases

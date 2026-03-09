@@ -1,0 +1,135 @@
+---
+# =============================================================================
+# validate_oracle.yml
+# Validação pós-instalação do ambiente Oracle
+#
+# Pode ser executado de forma isolada a qualquer momento
+#
+# Uso:
+#   ansible-playbook playbooks/validate_oracle.yml \
+#     -i inventories/dev \
+#     --ask-vault-pass
+#
+#   # Validar host específico
+#   ansible-playbook playbooks/validate_oracle.yml \
+#     -i inventories/dev \
+#     --limit dev-db-01
+# =============================================================================
+
+- name: "Validação Oracle – Ambiente completo"
+  hosts: dbservers
+  gather_facts: true
+  become: true
+  become_method: sudo
+
+  vars_files:
+    - "{{ inventory_dir }}/group_vars/vault.yml"
+
+  pre_tasks:
+    - name: "pre | Verificar conectividade"
+      ansible.builtin.ping:
+      tags: [always]
+
+    - name: "pre | Exibir informações do host"
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "SO: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Storage type: {{ oracle_storage_type }}"
+          - "Deployment type: {{ oracle_deployment_type }}"
+      tags: [always]
+
+  tasks:
+    - name: "validate | Verificar usuário oracle"
+      ansible.builtin.getent:
+        database: passwd
+        key: oracle
+      register: _oracle_user
+      tags: [validate, users]
+
+    - name: "validate | Verificar usuário grid"
+      ansible.builtin.getent:
+        database: passwd
+        key: grid
+      register: _grid_user
+      when: oracle_storage_type == 'asm'
+      tags: [validate, users]
+
+    - name: "validate | Verificar THP desabilitado"
+      ansible.builtin.shell: |
+        cat /sys/kernel/mm/transparent_hugepage/enabled
+      register: _thp_check
+      changed_when: false
+      tags: [validate, kernel]
+
+    - name: "validate | Assert THP desabilitado"
+      ansible.builtin.assert:
+        that: "'[never]' in _thp_check.stdout"
+        fail_msg: "THP não está desabilitado em {{ inventory_hostname }}"
+      tags: [validate, kernel]
+
+    - name: "validate | Verificar oracle_base existe"
+      ansible.builtin.stat:
+        path: "{{ oracle_base }}"
+      register: _oracle_base_stat
+      tags: [validate, directories]
+
+    - name: "validate | Assert oracle_base existe"
+      ansible.builtin.assert:
+        that: _oracle_base_stat.stat.exists
+        fail_msg: "oracle_base {{ oracle_base }} não existe em {{ inventory_hostname }}"
+      tags: [validate, directories]
+
+    - name: "validate | Verificar filesystems montados"
+      ansible.builtin.shell: |
+        df -hP {{ oracle_data_dir }} {{ oracle_fra_dir }} {{ oracle_redo_dir }}
+      register: _fs_check
+      changed_when: false
+      when: oracle_storage_type == 'filesystem'
+      tags: [validate, filesystem]
+
+    - name: "validate | Exibir status filesystems"
+      ansible.builtin.debug:
+        msg: "{{ _fs_check.stdout_lines }}"
+      when: oracle_storage_type == 'filesystem'
+      tags: [validate, filesystem]
+
+    - name: "validate | Verificar discos ASM"
+      ansible.builtin.command: oracleasm listdisks
+      register: _asm_disks
+      changed_when: false
+      when:
+        - oracle_storage_type == 'asm'
+        - oracle_asm_driver == 'asmlib'
+      tags: [validate, asm]
+
+    - name: "validate | Exibir discos ASM"
+      ansible.builtin.debug:
+        msg: "Discos ASM: {{ _asm_disks.stdout_lines }}"
+      when:
+        - oracle_storage_type == 'asm'
+        - oracle_asm_driver == 'asmlib'
+      tags: [validate, asm]
+
+    - name: "validate | Verificar processo pmon"
+      ansible.builtin.shell: |
+        ps -ef | grep pmon | grep -v grep
+      register: _pmon_check
+      changed_when: false
+      failed_when: false
+      tags: [validate, database]
+
+    - name: "validate | Exibir instâncias ativas"
+      ansible.builtin.debug:
+        msg: "Instâncias Oracle ativas: {{ _pmon_check.stdout_lines }}"
+      tags: [validate, database]
+
+  post_tasks:
+    - name: "post | Exibir resumo da validação"
+      ansible.builtin.debug:
+        msg:
+          - "Validação concluída: {{ inventory_hostname }}"
+          - "Usuário oracle: {{ 'OK' if _oracle_user is succeeded else 'FALHOU' }}"
+          - "THP desabilitado: {{ 'OK' if '[never]' in _thp_check.stdout else 'FALHOU' }}"
+          - "Oracle Base: {{ 'OK' if _oracle_base_stat.stat.exists else 'FALHOU' }}"
+      tags: [always]

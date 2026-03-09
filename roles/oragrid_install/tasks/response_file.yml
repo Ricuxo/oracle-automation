@@ -1,0 +1,39 @@
+---
+# =============================================================================
+# oragrid_install – Gerar response file
+# Seleciona template conforme oracle_deployment_type
+# =============================================================================
+
+- name: "response_file | Gerar response file standalone"
+  ansible.builtin.template:
+    src: grid_install_standalone.rsp.j2
+    dest: "{{ grid_response_file }}"
+    owner: "{{ grid_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  when: oracle_deployment_type == 'standalone'
+  tags: [response_file]
+
+- name: "response_file | Gerar response file RAC"
+  ansible.builtin.template:
+    src: grid_install_rac.rsp.j2
+    dest: "{{ grid_response_file }}"
+    owner: "{{ grid_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  when: oracle_deployment_type == 'rac'
+  tags: [response_file]
+
+- name: "response_file | Verificar se response file foi gerado"
+  ansible.builtin.stat:
+    path: "{{ grid_response_file }}"
+  register: _rsp_stat
+  tags: [response_file]
+
+- name: "response_file | Falhar se response file não encontrado"
+  ansible.builtin.assert:
+    that: _rsp_stat.stat.exists
+    fail_msg: >
+      Response file não gerado em {{ grid_response_file }}.
+      Verifique o template e as variáveis definidas.
+  tags: [response_file]

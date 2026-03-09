@@ -1,0 +1,12 @@
+# /etc/sysconfig/oracleasm
+# Gerenciado pelo Ansible – orahost_storage_asm
+# Alterações manuais serão sobrescritas
+
+# ── Configuração do driver ASMLib ─────────────────────────────────────────────
+ORACLEASM_ENABLED=true
+ORACLEASM_UID={{ grid_user }}
+ORACLEASM_GID=asmdba
+ORACLEASM_SCANBOOT=true
+ORACLEASM_SCANORDER="{{ oracle_asm_scanorder }}"
+ORACLEASM_SCANEXCLUDE="{{ oracle_asm_scanexclude }}"
+ORACLEASM_USE_LOGICAL_BLOCK_SIZE=false

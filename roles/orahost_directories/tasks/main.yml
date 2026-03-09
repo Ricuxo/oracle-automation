@@ -1,0 +1,159 @@
+---
+# =============================================================================
+# orahost_directories – Tasks
+# Responsabilidade: criação de diretórios base do Oracle
+# =============================================================================
+
+- name: "orahost_directories | Criar oracle_base"
+  ansible.builtin.file:
+    path: "{{ oracle_base }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  tags: [orahost_directories]
+
+- name: "orahost_directories | Criar oracle_inventory"
+  ansible.builtin.file:
+    path: "{{ oracle_inventory_location }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0770"
+  tags: [orahost_directories]
+
+- name: "orahost_directories | Criar oracle_home_base"
+  ansible.builtin.file:
+    path: "{{ oracle_home_base }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  tags: [orahost_directories]
+
+- name: "orahost_directories | Criar subdiretórios oracle_base"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  loop:
+    - "{{ oracle_base }}/admin"
+    - "{{ oracle_base }}/diag"
+    - "{{ oracle_base }}/audit"
+    - "{{ oracle_base }}/cfgtoollogs"
+    - "{{ oracle_base }}/TMPDIR"
+    - "{{ oracle_base }}/TEMP"
+  loop_control:
+    label: "{{ item }}"
+  tags: [orahost_directories]
+
+- name: "orahost_directories | Criar diretório de scripts oracle"
+  ansible.builtin.file:
+    path: "/home/{{ oracle_user }}/scripts"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  tags: [orahost_directories]
+
+- name: "orahost_directories | Criar diretórios de dados (filesystem)"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  loop:
+    - "{{ oracle_data_dir }}"
+    - "{{ oracle_fra_dir }}"
+    - "{{ oracle_redo_dir }}"
+  loop_control:
+    label: "{{ item }}"
+  when: oracle_storage_type == 'filesystem'
+  tags: [orahost_directories, filesystem]
+
+- name: "orahost_directories | Criar diretórios Grid (ASM)"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ grid_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  loop:
+    - "{{ grid_base }}"
+    - "{{ grid_home }}"
+    - "{{ grid_base }}/TMPDIR"
+    - "{{ grid_base }}/TEMP"
+  loop_control:
+    label: "{{ item }}"
+  when: oracle_storage_type == 'asm'
+  tags: [orahost_directories, asm]
+
+- name: "orahost_directories | Criar diretório de scripts grid"
+  ansible.builtin.file:
+    path: "/home/{{ grid_user }}/scripts"
+    state: directory
+    owner: "{{ grid_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  when: oracle_storage_type == 'asm'
+  tags: [orahost_directories, asm]
+
+- name: "orahost_directories | Configurar .bash_profile oracle"
+  ansible.builtin.template:
+    src: oracle_bash_profile.j2
+    dest: "/home/{{ oracle_user }}/.bash_profile"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0644"
+  tags: [orahost_directories, profile]
+
+- name: "orahost_directories | Configurar .bash_aliases oracle"
+  ansible.builtin.template:
+    src: oracle_bash_aliases.j2
+    dest: "/home/{{ oracle_user }}/.bash_aliases"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0644"
+  tags: [orahost_directories, profile]
+
+- name: "orahost_directories | Configurar db_env oracle"
+  ansible.builtin.template:
+    src: db_env.j2
+    dest: "/home/{{ oracle_user }}/scripts/db_env"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0644"
+  tags: [orahost_directories, profile]
+
+- name: "orahost_directories | Configurar .bash_profile grid"
+  ansible.builtin.template:
+    src: grid_bash_profile.j2
+    dest: "/home/{{ grid_user }}/.bash_profile"
+    owner: "{{ grid_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0644"
+  when: oracle_storage_type == 'asm'
+  tags: [orahost_directories, asm, profile]
+
+- name: "orahost_directories | Configurar .bash_aliases grid"
+  ansible.builtin.template:
+    src: grid_bash_aliases.j2
+    dest: "/home/{{ grid_user }}/.bash_aliases"
+    owner: "{{ grid_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0644"
+  when: oracle_storage_type == 'asm'
+  tags: [orahost_directories, asm, profile]
+
+- name: "orahost_directories | Configurar grid_env"
+  ansible.builtin.template:
+    src: grid_env.j2
+    dest: "/home/{{ grid_user }}/scripts/grid_env"
+    owner: "{{ grid_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0644"
+  when: oracle_storage_type == 'asm'
+  tags: [orahost_directories, asm, profile]

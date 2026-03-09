@@ -1,0 +1,31 @@
+# /etc/udev/rules.d/99-oracle-asm.rules
+# Gerenciado pelo Ansible – orahost_storage_asm
+# Alterações manuais serão sobrescritas
+# Gerado em: {{ ansible_date_time.iso8601 }}
+
+# =============================================================================
+# Regras udev para discos ASM
+# =============================================================================
+
+{% for disk in oracle_asm_disks %}
+{% if disk.by_id is defined %}
+# Disco: {{ disk.label }} – identificado por WWN/by-id
+ACTION=="add|change", \
+  ENV{ID_WWN_WITH_EXTENSION}=="{{ disk.by_id }}", \
+  OWNER="{{ oracle_udev_owner }}", \
+  GROUP="{{ oracle_udev_group }}", \
+  MODE="{{ oracle_udev_mode }}", \
+  SYMLINK+="oracleasm/{{ disk.label }}"
+
+{% else %}
+# Disco: {{ disk.label }} – identificado por nome de device
+# ATENÇÃO: nome de device pode mudar após reboot
+# Recomendado usar by_id (WWN) para ambiente produtivo
+ACTION=="add|change", \
+  KERNEL=="{{ disk.device | basename }}", \
+  OWNER="{{ oracle_udev_owner }}", \
+  GROUP="{{ oracle_udev_group }}", \
+  MODE="{{ oracle_udev_mode }}"
+
+{% endif %}
+{% endfor %}

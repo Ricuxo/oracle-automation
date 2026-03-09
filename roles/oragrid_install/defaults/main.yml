@@ -1,0 +1,58 @@
+---
+# =============================================================================
+# oragrid_install – Default Variables
+# Responsabilidade: instalação do Grid Infrastructure
+# Utilizado quando oracle_storage_type = asm
+# =============================================================================
+
+# ── Versão Oracle ─────────────────────────────────────────────────────────────
+oracle_version: "19.3.0"
+oracle_version_major: "19"
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+grid_user: grid
+oracle_group: oinstall
+oracle_user: oracle
+
+# ── Diretórios Grid ───────────────────────────────────────────────────────────
+grid_base: /u01/app/grid
+grid_home: "/u01/app/{{ oracle_version }}/grid"
+oracle_inventory_location: /u01/app/oraInventory
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+# Valores válidos: standalone | rac
+oracle_deployment_type: standalone
+
+# ── Instalador ────────────────────────────────────────────────────────────────
+oracle_stage_dir: /software/oracle
+grid_installer_zip: "LINUX.X64_193000_grid_home.zip"
+grid_installer_path: "{{ oracle_stage_dir }}/{{ grid_installer_zip }}"
+grid_response_file: "{{ oracle_stage_dir }}/grid_install.rsp"
+
+# ── Configuração ASM ──────────────────────────────────────────────────────────
+oracle_asm_driver: asmlib
+oracle_asm_disk_discovery: "/dev/oracleasm/*"
+
+# ── Diskgroup inicial (CRS/OCR) ───────────────────────────────────────────────
+grid_ocr_diskgroup: CRS
+grid_ocr_redundancy: NORMAL
+grid_ocr_disks: []
+# Exemplo:
+# grid_ocr_disks:
+#   - /dev/oracleasm/CRS1
+#   - /dev/oracleasm/CRS2
+
+# ── RAC – configurações específicas ──────────────────────────────────────────
+oracle_cluster_name: "oracle-cluster"
+oracle_scan_name: "oracle-scan"
+oracle_scan_port: 1521
+oracle_cluster_nodes: []
+# Exemplo:
+# oracle_cluster_nodes:
+#   - { hostname: rac-node1, vip: rac-node1-vip }
+#   - { hostname: rac-node2, vip: rac-node2-vip }
+
+oracle_private_interconnects: []
+# Exemplo:
+# oracle_private_interconnects:
+#   - { interface: eth1, subnet: 192.168.10.0, mask: 255.255.255.0 }

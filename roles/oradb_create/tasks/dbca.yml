@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# oradb_create – Executar DBCA silent
+# =============================================================================
+
+- name: "dbca | Executar DBCA silent"
+  ansible.builtin.shell: |
+    set -o pipefail
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_BASE={{ oracle_base }}
+    {{ oracle_home }}/bin/dbca \
+      -silent \
+      -createDatabase \
+      -responseFile {{ dbca_response_file }} \
+      -ignorePrereqFailure \
+      2>&1 | tee /tmp/dbca_{{ oracle_db_name }}_{{ ansible_date_time.epoch }}.log
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _dbca_create
+  changed_when: "'Database creation complete' in _dbca_create.stdout"
+  failed_when:
+    - _dbca_create.rc != 0
+    - "'Database creation complete' not in _dbca_create.stdout"
+  async: 7200
+  poll: 60
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [dbca]
+
+- name: "dbca | Exibir resultado"
+  ansible.builtin.debug:
+    msg: "DBCA rc={{ _dbca_create.rc }}"
+  tags: [dbca]
+
+- name: "dbca | Salvar log DBCA"
+  ansible.builtin.fetch:
+    src: "/tmp/dbca_{{ oracle_db_name }}_{{ ansible_date_time.epoch }}.log"
+    dest: "logs/dbca_{{ oracle_db_name }}_{{ inventory_hostname }}_{{ ansible_date_time.epoch }}.log"
+    flat: true
+  failed_when: false
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [dbca]

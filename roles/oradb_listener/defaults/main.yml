@@ -1,0 +1,38 @@
+---
+# =============================================================================
+# oradb_listener – Default Variables
+# Responsabilidade: configuração do listener Oracle
+# =============================================================================
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+oracle_user: oracle
+oracle_group: oinstall
+grid_user: grid
+
+# ── Diretórios ────────────────────────────────────────────────────────────────
+oracle_home: "{{ oracle_home_base }}/{{ oracle_version }}/dbhome_1"
+oracle_home_base: /u01/app/oracle/product
+oracle_base: /u01/app/oracle
+grid_home: "/u01/app/{{ oracle_version }}/grid"
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+oracle_deployment_type: standalone
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+oracle_storage_type: filesystem
+
+# ── Listener standalone ───────────────────────────────────────────────────────
+oracle_listener_name: LISTENER
+oracle_listener_port: 1521
+oracle_listener_protocol: TCP
+
+# ── TNS ───────────────────────────────────────────────────────────────────────
+oracle_tns_admin: "{{ oracle_home }}/network/admin"
+
+# ── Banco registrado ──────────────────────────────────────────────────────────
+oracle_db_name: ORCL
+oracle_sid: "{{ oracle_db_name }}"
+oracle_db_unique_name: "{{ oracle_db_name }}"
+
+# ── Systemd ───────────────────────────────────────────────────────────────────
+oracle_listener_systemd: true

@@ -1,0 +1,67 @@
+---
+# =============================================================================
+# oradb_config – Configurar FRA (Fast Recovery Area)
+# =============================================================================
+
+- name: "fra | Definir caminho FRA filesystem"
+  ansible.builtin.set_fact:
+    _fra_dest: "{{ oracle_fra_dir }}/{{ oracle_db_name }}"
+  when: oracle_storage_type == 'filesystem'
+  tags: [fra]
+
+- name: "fra | Definir caminho FRA ASM"
+  ansible.builtin.set_fact:
+    _fra_dest: "+{{ oracle_asm_reco_diskgroup }}"
+  when: oracle_storage_type == 'asm'
+  tags: [fra]
+
+- name: "fra | Criar diretório FRA (filesystem)"
+  ansible.builtin.file:
+    path: "{{ oracle_fra_dir }}/{{ oracle_db_name }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  when: oracle_storage_type == 'filesystem'
+  tags: [fra]
+
+- name: "fra | Verificar configuração FRA atual"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT value FROM v$parameter WHERE name = 'db_recovery_file_dest';
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _fra_current
+  changed_when: false
+  tags: [fra]
+
+- name: "fra | Configurar FRA"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    ALTER SYSTEM SET db_recovery_file_dest='{{ _fra_dest }}' SCOPE=both;
+    ALTER SYSTEM SET db_recovery_file_dest_size={{ oracle_fra_size_gb }}G SCOPE=both;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _fra_config
+  changed_when: _fra_config.rc == 0
+  when: _fra_dest not in _fra_current.stdout
+  tags: [fra]
+
+- name: "fra | Exibir configuração FRA"
+  ansible.builtin.debug:
+    msg:
+      - "FRA dest: {{ _fra_dest }}"
+      - "FRA size: {{ oracle_fra_size_gb }}G"
+  tags: [fra]

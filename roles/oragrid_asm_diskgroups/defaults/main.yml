@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# oragrid_asm_diskgroups – Default Variables
+# Responsabilidade: criação dos diskgroups ASM
+# Executado após oragrid_install
+# =============================================================================
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+grid_user: grid
+oracle_group: oinstall
+
+# ── Diretórios Grid ───────────────────────────────────────────────────────────
+grid_home: "/u01/app/{{ oracle_version }}/grid"
+grid_base: /u01/app/grid
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+oracle_deployment_type: standalone
+
+# ── Diskgroups ────────────────────────────────────────────────────────────────
+oracle_asm_diskgroups: []
+# Exemplo:
+# oracle_asm_diskgroups:
+#   - name: DATA
+#     redundancy: NORMAL       # EXTERNAL | NORMAL | HIGH | FLEX
+#     ausize: 4                # MB – allocation unit
+#     disks:
+#       - /dev/oracleasm/DATA1
+#       - /dev/oracleasm/DATA2
+#     attributes:
+#       compatible.asm: "19.0"
+#       compatible.rdbms: "19.0"
+#
+#   - name: RECO
+#     redundancy: NORMAL
+#     ausize: 4
+#     disks:
+#       - /dev/oracleasm/RECO1
+#       - /dev/oracleasm/RECO2
+#     attributes:
+#       compatible.asm: "19.0"
+#       compatible.rdbms: "19.0"

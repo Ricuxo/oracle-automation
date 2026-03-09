@@ -1,0 +1,29 @@
+# listener.ora
+# Gerenciado pelo Ansible – oradb_listener
+# Gerado em: {{ ansible_date_time.iso8601 }}
+
+{{ oracle_listener_name }} =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS =
+        (PROTOCOL = {{ oracle_listener_protocol }})
+        (HOST = {{ ansible_fqdn }})
+        (PORT = {{ oracle_listener_port }})
+      )
+    )
+  )
+
+SID_LIST_{{ oracle_listener_name }} =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = {{ oracle_db_unique_name }})
+      (ORACLE_HOME = {{ oracle_home }})
+      (SID_NAME = {{ oracle_sid }})
+    )
+  )
+
+LOGGING_{{ oracle_listener_name }} = ON
+
+LOG_FILE_{{ oracle_listener_name }} = {{ oracle_base }}/diag/tnslsnr/{{ ansible_hostname }}/{{ oracle_listener_name | lower }}/trace/{{ oracle_listener_name | lower }}.log
+
+INBOUND_CONNECT_TIMEOUT_{{ oracle_listener_name }} = 60

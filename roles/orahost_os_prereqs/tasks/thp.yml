@@ -1,0 +1,49 @@
+---
+# =============================================================================
+# orahost_os_prereqs – Transparent HugePages
+# Oracle exige que THP esteja desabilitado
+# =============================================================================
+
+- name: "thp | Desabilitar THP em runtime"
+  ansible.builtin.shell: |
+    echo never > /sys/kernel/mm/transparent_hugepage/enabled
+    echo never > /sys/kernel/mm/transparent_hugepage/defrag
+  changed_when: false
+  tags: [thp]
+
+- name: "thp | Verificar se tuned está instalado"
+  ansible.builtin.package:
+    name: tuned
+    state: present
+  tags: [thp, tuned]
+
+- name: "thp | Criar diretório do perfil tuned oracle"
+  ansible.builtin.file:
+    path: /etc/tuned/oracle
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [thp, tuned]
+
+- name: "thp | Criar perfil tuned oracle"
+  ansible.builtin.copy:
+    content: |
+      [main]
+      summary=Oracle Database tuned profile
+
+      [vm]
+      transparent_hugepages=never
+    dest: /etc/tuned/oracle/tuned.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: activate_tuned_oracle
+  tags: [thp, tuned]
+
+- name: "thp | Garantir que tuned está habilitado e rodando"
+  ansible.builtin.systemd:
+    name: tuned
+    enabled: true
+    state: started
+  tags: [thp, tuned]

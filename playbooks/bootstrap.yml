@@ -1,0 +1,54 @@
+---
+# =============================================================================
+# bootstrap.yml
+# Cria usuário de automação oracle_ansible nos hosts alvo
+#
+# Executar ANTES de todos os outros playbooks
+# Requer acesso root ou usuário inicial do SO
+#
+# Uso:
+#   ansible-playbook playbooks/bootstrap.yml \
+#     -i inventories/dev \
+#     -u root \
+#     --ask-pass
+# =============================================================================
+
+- name: "Bootstrap – Criar usuário de automação"
+  hosts: dbservers
+  gather_facts: true
+  become: true
+  become_method: sudo
+
+  vars_files:
+    - "{{ inventory_dir }}/group_vars/vault.yml"
+
+  pre_tasks:
+    - name: "bootstrap | Verificar conectividade"
+      ansible.builtin.ping:
+      tags: [bootstrap]
+
+    - name: "bootstrap | Exibir informações do host"
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "SO: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Kernel: {{ ansible_kernel }}"
+      tags: [bootstrap]
+
+  roles:
+    - role: orahost_bootstrap
+      tags: [bootstrap]
+
+  post_tasks:
+    - name: "bootstrap | Confirmar acesso com novo usuário"
+      ansible.builtin.command: whoami
+      become: true
+      become_user: "{{ bootstrap_user }}"
+      register: _whoami
+      changed_when: false
+      tags: [bootstrap]
+
+    - name: "bootstrap | Exibir resultado"
+      ansible.builtin.debug:
+        msg: "Acesso confirmado como: {{ _whoami.stdout }}"
+      tags: [bootstrap]

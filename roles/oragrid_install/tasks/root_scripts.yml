@@ -1,0 +1,84 @@
+---
+# =============================================================================
+# oragrid_install – Executar root scripts
+# Ordem obrigatória:
+#   1. orainstRoot.sh em todos os nós
+#   2. root.sh no primeiro nó
+#   3. Aguardar estabilização do cluster
+#   4. root.sh nos demais nós (serial)
+#   5. gridSetup.sh -executeConfigTools
+# =============================================================================
+
+- name: "root_scripts | Executar orainstRoot.sh"
+  ansible.builtin.command: "{{ oracle_inventory_location }}/orainstRoot.sh"
+  become: true
+  become_user: root
+  args:
+    creates: /etc/oraInst.loc
+  register: _orainst_root
+  changed_when: _orainst_root.rc == 0
+  tags: [root_scripts]
+
+- name: "root_scripts | Executar root.sh – standalone"
+  ansible.builtin.command: "{{ grid_home }}/root.sh"
+  become: true
+  become_user: root
+  args:
+    creates: /etc/oracle/ocr.loc
+  register: _root_sh
+  changed_when: _root_sh.rc == 0
+  when: oracle_deployment_type == 'standalone'
+  tags: [root_scripts]
+
+- name: "root_scripts | Executar root.sh – primeiro nó RAC"
+  ansible.builtin.command: "{{ grid_home }}/root.sh"
+  become: true
+  become_user: root
+  args:
+    creates: /etc/oracle/ocr.loc
+  register: _root_sh_first
+  changed_when: _root_sh_first.rc == 0
+  when:
+    - oracle_deployment_type == 'rac'
+    - inventory_hostname == ansible_play_hosts[0]
+  tags: [root_scripts, rac]
+
+- name: "root_scripts | Aguardar estabilização do cluster"
+  ansible.builtin.pause:
+    seconds: 30
+    prompt: "Aguardando estabilização do cluster após root.sh no primeiro nó..."
+  when:
+    - oracle_deployment_type == 'rac'
+    - inventory_hostname == ansible_play_hosts[0]
+    - _root_sh_first is changed
+  tags: [root_scripts, rac]
+
+- name: "root_scripts | Executar root.sh – demais nós RAC"
+  ansible.builtin.command: "{{ grid_home }}/root.sh"
+  become: true
+  become_user: root
+  args:
+    creates: /etc/oracle/ocr.loc
+  register: _root_sh_remain
+  changed_when: _root_sh_remain.rc == 0
+  when:
+    - oracle_deployment_type == 'rac'
+    - inventory_hostname != ansible_play_hosts[0]
+  tags: [root_scripts, rac]
+
+- name: "root_scripts | Executar gridSetup.sh -executeConfigTools"
+  ansible.builtin.shell: |
+    set -o pipefail
+    {{ grid_home }}/gridSetup.sh \
+      -silent \
+      -executeConfigTools \
+      -responseFile {{ grid_response_file }} \
+      2>&1 | tee /tmp/grid_configtools_{{ ansible_date_time.epoch }}.log
+  become: true
+  become_user: "{{ grid_user }}"
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  args:
+    creates: "{{ grid_home }}/crs/install/crsconfig_params"
+  register: _config_tools
+  changed_when: "'Successfully Executed' in _config_tools.stdout"
+  tags: [root_scripts]

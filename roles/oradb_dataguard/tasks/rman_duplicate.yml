@@ -1,0 +1,76 @@
+---
+# =============================================================================
+# oradb_dataguard – Gerar e executar script RMAN duplicate
+# Executado no host standby via delegate_to
+# =============================================================================
+
+- name: "rman_duplicate | Gerar script RMAN duplicate (filesystem)"
+  ansible.builtin.template:
+    src: rman_duplicate_fs.rman.j2
+    dest: "{{ dg_rman_script }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  when: oracle_storage_type == 'filesystem'
+  tags: [rman_duplicate]
+
+- name: "rman_duplicate | Gerar script RMAN duplicate (ASM)"
+  ansible.builtin.template:
+    src: rman_duplicate_asm.rman.j2
+    dest: "{{ dg_rman_script }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  when: oracle_storage_type == 'asm'
+  tags: [rman_duplicate]
+
+- name: "rman_duplicate | Verificar conectividade RMAN ao primary"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_standby_oracle_home }}
+    export ORACLE_SID={{ dg_standby_sid }}
+    {{ dg_standby_oracle_home }}/bin/rman << 'RMANEOF'
+    connect target sys/{{ dg_sys_password }}@{{ dg_primary_db_unique_name }};
+    exit;
+    RMANEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _rman_connect
+  changed_when: false
+  failed_when: "'RMAN-' in _rman_connect.stdout"
+  no_log: true
+  tags: [rman_duplicate]
+
+- name: "rman_duplicate | Executar RMAN duplicate"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_standby_oracle_home }}
+    export ORACLE_SID={{ dg_standby_sid }}
+    export TNS_ADMIN={{ dg_tns_admin }}
+    {{ dg_standby_oracle_home }}/bin/rman \
+      target sys/{{ dg_sys_password }}@{{ dg_primary_db_unique_name }} \
+      auxiliary sys/{{ dg_sys_password }}@{{ dg_standby_db_unique_name }} \
+      cmdfile={{ dg_rman_script }} \
+      log=/tmp/rman_duplicate_{{ dg_standby_db_unique_name }}_{{ ansible_date_time.epoch }}.log
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _rman_duplicate
+  changed_when: "'Finished Duplicate Db' in _rman_duplicate.stdout"
+  failed_when:
+    - _rman_duplicate.rc != 0
+    - "'Finished Duplicate Db' not in _rman_duplicate.stdout"
+  async: 14400
+  poll: 60
+  no_log: true
+  tags: [rman_duplicate]
+
+- name: "rman_duplicate | Salvar log RMAN duplicate"
+  ansible.builtin.fetch:
+    src: "/tmp/rman_duplicate_{{ dg_standby_db_unique_name }}_{{ ansible_date_time.epoch }}.log"
+    dest: "logs/rman_duplicate_{{ dg_standby_db_unique_name }}_{{ ansible_date_time.epoch }}.log"
+    flat: true
+  failed_when: false
+  tags: [rman_duplicate]
+
+- name: "rman_duplicate | Exibir resultado duplicate"
+  ansible.builtin.debug:
+    msg: "RMAN duplicate rc={{ _rman_duplicate.rc }}"
+  tags: [rman_duplicate]

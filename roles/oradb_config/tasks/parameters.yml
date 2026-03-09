@@ -1,0 +1,71 @@
+---
+# =============================================================================
+# oradb_config – Aplicar parâmetros de inicialização
+# =============================================================================
+
+- name: "parameters | Verificar parâmetros atuais"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT name || '=' || value
+    FROM v$parameter
+    WHERE name IN ({{ oracle_db_parameters | map(attribute='name') | map('regex_replace', '^(.*)$', "'\\1'") | join(',') }});
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _current_parameters
+  changed_when: false
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [parameters]
+
+- name: "parameters | Aplicar parâmetros"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    ALTER SYSTEM SET {{ item.name }}={{ item.value }} SCOPE={{ item.scope | default('both') }}{% if oracle_deployment_type == 'rac' %} SID='*'{% endif %};
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _apply_parameter
+  changed_when: _apply_parameter.rc == 0
+  loop: "{{ oracle_db_parameters }}"
+  loop_control:
+    label: "{{ item.name }}={{ item.value }}"
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [parameters]
+
+- name: "parameters | Verificar se requer restart"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT name FROM v$parameter
+    WHERE name IN ({{ oracle_db_parameters | map(attribute='name') | map('regex_replace', '^(.*)$', "'\\1'") | join(',') }})
+    AND issys_modifiable = 'FALSE';
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _requires_restart
+  changed_when: false
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [parameters]
+
+- name: "parameters | Avisar sobre parâmetros que requerem restart"
+  ansible.builtin.debug:
+    msg: >
+      Os seguintes parâmetros requerem restart do banco para entrar em vigor:
+      {{ _requires_restart.stdout_lines | select | list }}
+  when: _requires_restart.stdout | trim | length > 0
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [parameters]

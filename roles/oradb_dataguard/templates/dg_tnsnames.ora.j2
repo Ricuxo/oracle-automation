@@ -1,0 +1,47 @@
+# tnsnames.ora – Data Guard
+# Gerenciado pelo Ansible – oradb_dataguard
+# Gerado em: {{ ansible_date_time.iso8601 }}
+
+# ── Primary ───────────────────────────────────────────────────────────────────
+{{ dg_primary_db_unique_name }} =
+  (DESCRIPTION =
+    (ADDRESS =
+      (PROTOCOL = TCP)
+      (HOST = {{ dg_primary_host }})
+      (PORT = {{ dg_primary_listener_port }})
+    )
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = {{ dg_primary_db_unique_name }})
+      (UR = A)
+    )
+  )
+
+# ── Standby ───────────────────────────────────────────────────────────────────
+{{ dg_standby_db_unique_name }} =
+  (DESCRIPTION =
+    (ADDRESS =
+      (PROTOCOL = TCP)
+      (HOST = {{ dg_standby_host }})
+      (PORT = {{ dg_standby_listener_port }})
+    )
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = {{ dg_standby_db_unique_name }})
+      (UR = A)
+    )
+  )
+
+# ── Alias banco (sem role) ────────────────────────────────────────────────────
+{{ dg_primary_db_name }} =
+  (DESCRIPTION =
+    (ADDRESS =
+      (PROTOCOL = TCP)
+      (HOST = {{ dg_primary_host }})
+      (PORT = {{ dg_primary_listener_port }})
+    )
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = {{ dg_primary_db_name }})
+    )
+  )

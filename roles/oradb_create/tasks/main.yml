@@ -1,0 +1,59 @@
+---
+# =============================================================================
+# oradb_create – Tasks
+# Responsabilidade: criação do banco de dados via DBCA silent
+# =============================================================================
+
+- name: "oradb_create | Verificar se RDBMS está instalado"
+  ansible.builtin.stat:
+    path: "{{ oracle_home }}/bin/oracle"
+  register: _oracle_binary
+  tags: [oradb_create]
+
+- name: "oradb_create | Falhar se RDBMS não instalado"
+  ansible.builtin.assert:
+    that: _oracle_binary.stat.exists
+    fail_msg: >
+      Oracle binary não encontrado em {{ oracle_home }}/bin/oracle.
+      Execute a role oradb_install antes de oradb_create.
+  tags: [oradb_create]
+
+- name: "oradb_create | Verificar se banco já existe"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    {{ oracle_home }}/bin/dbca -silent -listDatabases 2>/dev/null \
+    | grep -w {{ oracle_db_name }} | wc -l
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _db_exists
+  changed_when: false
+  failed_when: false
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [oradb_create]
+
+- name: "oradb_create | Definir fato db_already_exists"
+  ansible.builtin.set_fact:
+    db_already_exists: "{{ _db_exists.stdout | trim | int > 0 }}"
+  tags: [oradb_create]
+
+- name: "oradb_create | Exibir status do banco"
+  ansible.builtin.debug:
+    msg: >
+      Banco {{ oracle_db_name }}:
+      {{ 'já existe, pulando criação' if db_already_exists
+         else 'não existe, iniciando criação' }}
+  tags: [oradb_create]
+
+- name: "oradb_create | Gerar response file DBCA"
+  ansible.builtin.import_tasks: response_file.yml
+  when: not db_already_exists
+  tags: [oradb_create, response_file]
+
+- name: "oradb_create | Executar DBCA"
+  ansible.builtin.import_tasks: dbca.yml
+  when: not db_already_exists
+  tags: [oradb_create, dbca]
+
+- name: "oradb_create | Validar banco criado"
+  ansible.builtin.import_tasks: validate.yml
+  tags: [oradb_create, validate]

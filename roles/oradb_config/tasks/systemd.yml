@@ -1,0 +1,44 @@
+---
+# =============================================================================
+# oradb_config – Configurar systemd para banco Oracle
+# Utilizado apenas em filesystem standalone
+# Em ASM o Oracle Restart gerencia o banco via srvctl
+# =============================================================================
+
+- name: "systemd | Gerar unit file banco Oracle"
+  ansible.builtin.template:
+    src: oracle-db.service.j2
+    dest: "/etc/systemd/system/oracle-db-{{ oracle_sid | lower }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - systemd_daemon_reload
+    - enable_oracle_db_service
+  tags: [systemd]
+
+- name: "systemd | Recarregar systemd daemon"
+  ansible.builtin.systemd:
+    daemon_reload: true
+  tags: [systemd]
+
+- name: "systemd | Habilitar serviço do banco"
+  ansible.builtin.systemd:
+    name: "oracle-db-{{ oracle_sid | lower }}"
+    enabled: true
+    state: started
+  tags: [systemd]
+
+- name: "systemd | Verificar status do serviço"
+  ansible.builtin.systemd:
+    name: "oracle-db-{{ oracle_sid | lower }}"
+  register: _db_service_status
+  tags: [systemd]
+
+- name: "systemd | Exibir status do serviço"
+  ansible.builtin.debug:
+    msg:
+      - "Serviço: oracle-db-{{ oracle_sid | lower }}"
+      - "Estado: {{ _db_service_status.status.ActiveState }}"
+      - "Habilitado: {{ _db_service_status.status.UnitFileState }}"
+  tags: [systemd]

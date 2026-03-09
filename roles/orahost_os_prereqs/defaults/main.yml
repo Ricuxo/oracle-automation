@@ -1,4 +1,38 @@
 ---
-# defaults file for roles/os_prereqs
+# =============================================================================
+# orahost_os_prereqs – Default Variables
+# Responsabilidade: pré-requisitos de SO via oracle-preinstall
+# =============================================================================
 
-oracle_preinstall_package: oracle-database-preinstall-19c
+# ── Versão Oracle ─────────────────────────────────────────────────────────────
+oracle_version_major: "19"
+
+# ── Pacote preinstall ─────────────────────────────────────────────────────────
+oracle_preinstall_package: "oracle-database-preinstall-{{ oracle_version_major }}c"
+
+# ── Transparent HugePages ─────────────────────────────────────────────────────
+# Oracle exige que THP esteja desabilitado
+oracle_thp_disable: true
+
+# ── HugePages ─────────────────────────────────────────────────────────────────
+oracle_hugepages_enable: false
+oracle_hugepages_count: 0
+# Se hugepages_count = 0, calcula automaticamente via SGA + PGA
+oracle_sga_target_mb: 0
+oracle_pga_aggregate_target_mb: 0
+
+# ── NTP / Chrony ──────────────────────────────────────────────────────────────
+oracle_chrony_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+
+# ── Firewall ──────────────────────────────────────────────────────────────────
+oracle_firewall_manage: true
+oracle_firewall_ports:
+  - { port: 1521, proto: tcp }
+  - { port: 5500, proto: tcp }
+  - { port: 6200, proto: tcp }
+  - { port: 6201, proto: tcp }
+
+# ── SELinux ───────────────────────────────────────────────────────────────────
+oracle_selinux_state: permissive

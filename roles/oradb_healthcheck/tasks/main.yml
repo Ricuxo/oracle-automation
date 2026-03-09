@@ -1,0 +1,38 @@
+---
+# =============================================================================
+# oradb_healthcheck – Tasks
+# Responsabilidade: validações pós-instalação do ambiente Oracle
+# =============================================================================
+
+- name: "oradb_healthcheck | Validações de SO"
+  ansible.builtin.import_tasks: check_os.yml
+  when: oracle_healthcheck_os | bool
+  tags: [oradb_healthcheck, check_os]
+
+- name: "oradb_healthcheck | Validações de listener"
+  ansible.builtin.import_tasks: check_listener.yml
+  when: oracle_healthcheck_listener | bool
+  tags: [oradb_healthcheck, check_listener]
+
+- name: "oradb_healthcheck | Validações de ASM"
+  ansible.builtin.import_tasks: check_asm.yml
+  when:
+    - oracle_healthcheck_asm | bool
+    - oracle_storage_type == 'asm'
+  tags: [oradb_healthcheck, check_asm]
+
+- name: "oradb_healthcheck | Validações de RAC"
+  ansible.builtin.import_tasks: check_rac.yml
+  when:
+    - oracle_healthcheck_rac | bool
+    - oracle_deployment_type == 'rac'
+  tags: [oradb_healthcheck, check_rac]
+
+- name: "oradb_healthcheck | Validações de banco"
+  ansible.builtin.import_tasks: check_database.yml
+  when: oracle_healthcheck_database | bool
+  tags: [oradb_healthcheck, check_database]
+
+- name: "oradb_healthcheck | Exibir resumo final"
+  ansible.builtin.import_tasks: summary.yml
+  tags: [oradb_healthcheck, summary]

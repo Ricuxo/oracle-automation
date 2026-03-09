@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# orahost_storage – Formatação de partições
+# =============================================================================
+
+- name: "format | Verificar se partição já possui filesystem"
+  ansible.builtin.command: >
+    blkid -s TYPE -o value {{ item.partition }}
+  register: _blkid_check
+  changed_when: false
+  failed_when: false
+  loop: "{{ oracle_fs_volumes }}"
+  loop_control:
+    label: "{{ item.partition }}"
+  tags: [format]
+
+- name: "format | Formatar partição com XFS"
+  ansible.builtin.command: >
+    mkfs.xfs -f {{ item.item.partition }}
+  when:
+    - item.item.fstype | default(oracle_fs_type) == 'xfs'
+    - item.stdout == ''
+  loop: "{{ _blkid_check.results }}"
+  loop_control:
+    label: "{{ item.item.partition }}"
+  register: _mkfs_xfs
+  changed_when: _mkfs_xfs.rc == 0
+  tags: [format]
+
+- name: "format | Formatar partição com EXT4"
+  ansible.builtin.command: >
+    mkfs.ext4 -F {{ item.item.partition }}
+  when:
+    - item.item.fstype | default(oracle_fs_type) == 'ext4'
+    - item.stdout == ''
+  loop: "{{ _blkid_check.results }}"
+  loop_control:
+    label: "{{ item.item.partition }}"
+  register: _mkfs_ext4
+  changed_when: _mkfs_ext4.rc == 0
+  tags: [format]

@@ -1,0 +1,31 @@
+---
+# =============================================================================
+# orahost_common – Default Variables
+# Responsabilidade: ferramentas base necessárias para o ambiente Oracle
+# =============================================================================
+
+# ── Pacotes base ──────────────────────────────────────────────────────────────
+orahost_common_packages:
+  - rlwrap          # necessário para aliases sql, rman, asmcmd, adrci
+  - vim
+  - tree
+  - wget
+  - curl
+  - lsof
+  - strace
+  - ltrace
+  - tcpdump
+  - net-tools
+  - bind-utils      # nslookup, dig - importante para RAC/SCAN
+  - telnet
+  - ncat
+  - traceroute
+  - iotop
+  - htop
+  - sysstat         # iostat, sar - essencial para DBA
+  - perf
+  - tmux
+  - screen
+  - zip
+  - unzip
+  - tar

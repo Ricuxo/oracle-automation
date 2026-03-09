@@ -1,0 +1,37 @@
+# ~/.bash_aliases
+# Gerenciado pelo Ansible – orahost_directories
+# Alterações manuais serão sobrescritas
+
+# ── Navegação ─────────────────────────────────────────────────────────────────
+alias dba='cd $SQLPATH'
+alias sqlnet='cd $ORACLE_HOME/network/admin ; ls -ltr'
+
+# ── SQLPlus ───────────────────────────────────────────────────────────────────
+alias sql='rlwrap sqlplus / as sysdba'
+alias rman='rlwrap rman'
+
+# ── Alert log ─────────────────────────────────────────────────────────────────
+alias alert="tail -100f $ORACLE_BASE/diag/rdbms/\`echo \$ORACLE_SID | sed 's/.\{1\}$//' | tr [:upper:] [:lower:]\`/\$ORACLE_SID/trace/alert_\$ORACLE_SID.log"
+alias goalert="cd $ORACLE_BASE/diag/rdbms/\`echo \$ORACLE_SID | sed 's/.\{1\}$//' | tr [:upper:] [:lower:]\`/\$ORACLE_SID/trace ; ls -ltr"
+
+# ── CRS ───────────────────────────────────────────────────────────────────────
+alias crs_status="\`ps -ef | grep ocssd.bin | sed 's/.\{15\}$//' | awk {'print \$8'}\`/bin/crsctl stat res -t"
+alias crslog="cd \`ps -ef | grep ocssd.bin | sed 's/.\{15\}$//' | awk {'print \$8'}\`/log/\`hostname -s\` ; ls -ltr"
+
+# ── Reports SQL ───────────────────────────────────────────────────────────────
+alias sqlt='sqlplus / as sysdba @?/rdbms/admin/sqltrpt.sql'
+alias awr='sqlplus / as sysdba @?/rdbms/admin/awrrpt.sql'
+alias tbsfree='sqlplus / as sysdba @~/scripts/tbsfree.sql'
+alias tbs_inc='sqlplus / as sysdba @~/scripts/tbs_inc.sql'
+alias free_asm='sqlplus / as sysdba @~/scripts/free_asm.sql'
+
+# ── RAC ───────────────────────────────────────────────────────────────────────
+alias topall='for i in `$GRID_HOME/bin/olsnodes`; do ssh $i "( hostname; top -b -n 1 | head -12)"; done'
+alias dfu='sh $SQLPATH/dfu.sh'
+alias big_files='sh ~/scripts/find.sh'
+
+# ── Backup ────────────────────────────────────────────────────────────────────
+alias bkp='cd /var/opt/omni/tmp ; ls -l'
+
+# ── Ambiente ──────────────────────────────────────────────────────────────────
+alias loadenv='cd ~/scripts; . ./loadenv.sh'

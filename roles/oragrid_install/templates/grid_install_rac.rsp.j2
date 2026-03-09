@@ -1,0 +1,57 @@
+# Grid Infrastructure Response File – RAC
+# Gerenciado pelo Ansible – oragrid_install
+# Gerado em: {{ ansible_date_time.iso8601 }}
+# Oracle Version: {{ oracle_version }}
+
+oracle.install.responseFileVersion=/oracle/install/rspfmt_crsinstall_response_schema_v19.0.0
+
+# ── Opção de instalação ───────────────────────────────────────────────────────
+# CRS_CONFIG = RAC
+oracle.install.option=CRS_CONFIG
+
+# ── Diretórios ────────────────────────────────────────────────────────────────
+ORACLE_BASE={{ grid_base }}
+oracle.install.asm.OSDBA=asmdba
+oracle.install.asm.OSOPER=asmoper
+oracle.install.asm.OSASM=asmadmin
+
+# ── Configuração do Cluster ───────────────────────────────────────────────────
+oracle.install.crs.config.clusterName={{ oracle_cluster_name }}
+oracle.install.crs.config.gpnp.scanName={{ oracle_scan_name }}
+oracle.install.crs.config.gpnp.scanPort={{ oracle_scan_port }}
+
+# ── Nós do Cluster ────────────────────────────────────────────────────────────
+oracle.install.crs.config.clusterNodes={% for node in oracle_cluster_nodes %}{{ node.hostname }}:{{ node.hostname }}-vip{% if not loop.last %},{% endif %}{% endfor %}
+
+
+# ── Interfaces de rede ────────────────────────────────────────────────────────
+oracle.install.crs.config.networkInterfaceList={% for iface in oracle_private_interconnects %}{{ iface.interface }}:{{ iface.subnet }}:{{ '3' if loop.index == 1 else '1' }}{% if not loop.last %},{% endif %}{% endfor %}
+
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+oracle.install.crs.config.storageOption=FLEX_ASM_STORAGE
+
+# ── Configuração ASM ──────────────────────────────────────────────────────────
+oracle.install.asm.diskGroup.name={{ grid_ocr_diskgroup }}
+oracle.install.asm.diskGroup.redundancy={{ grid_ocr_redundancy }}
+oracle.install.asm.diskGroup.AUSize=4
+oracle.install.asm.diskGroup.disks={{ grid_ocr_disks | join(',') }}
+oracle.install.asm.diskGroup.diskDiscoveryString={{ oracle_asm_disk_discovery }}
+oracle.install.asm.monitorPassword={{ oracle_asm_monitor_password }}
+
+# ── Tipo de cluster ───────────────────────────────────────────────────────────
+oracle.install.crs.config.clusterType=DOMAIN
+
+# ── GNS ───────────────────────────────────────────────────────────────────────
+oracle.install.crs.config.gpnp.configureGNS=false
+oracle.install.crs.config.autoConfigureClusterNodeVIP=false
+
+# ── IPMI ──────────────────────────────────────────────────────────────────────
+oracle.install.crs.config.useIPMI=false
+
+# ── Atualizações automáticas ──────────────────────────────────────────────────
+oracle.installer.autoupdates.option=SKIP_UPDATES
+
+# ── Configurações de segurança ────────────────────────────────────────────────
+DECLINE_SECURITY_UPDATES=true
+oracle.install.db.rootconfig.executeRootScript=false

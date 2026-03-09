@@ -1,0 +1,115 @@
+---
+# =============================================================================
+# oradb_dataguard – Configurar primary para Data Guard
+# =============================================================================
+
+- name: "configure_primary | Verificar modo archivelog"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    {{ dg_primary_oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT log_mode FROM v$database;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _primary_archivelog
+  changed_when: false
+  tags: [configure_primary]
+
+- name: "configure_primary | Assert primary em archivelog"
+  ansible.builtin.assert:
+    that: "'ARCHIVELOG' in _primary_archivelog.stdout"
+    fail_msg: >
+      Primary {{ dg_primary_db_unique_name }} não está em ARCHIVELOG.
+      Habilite archivelog antes de configurar Data Guard.
+  tags: [configure_primary]
+
+- name: "configure_primary | Configurar parâmetros Data Guard no primary"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    {{ dg_primary_oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    ALTER SYSTEM SET log_archive_config='DG_CONFIG=({{ dg_primary_db_unique_name }},{{ dg_standby_db_unique_name }})' SCOPE=both;
+    ALTER SYSTEM SET log_archive_dest_1='LOCATION=USE_DB_RECOVERY_FILE_DEST VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME={{ dg_primary_db_unique_name }}' SCOPE=both;
+    ALTER SYSTEM SET log_archive_dest_2='SERVICE={{ dg_standby_db_unique_name }} ASYNC VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME={{ dg_standby_db_unique_name }}' SCOPE=both;
+    ALTER SYSTEM SET log_archive_dest_state_1=ENABLE SCOPE=both;
+    ALTER SYSTEM SET log_archive_dest_state_2=ENABLE SCOPE=both;
+    ALTER SYSTEM SET remote_login_passwordfile=EXCLUSIVE SCOPE=spfile;
+    ALTER SYSTEM SET log_archive_format='%t_%s_%r.dbf' SCOPE=spfile;
+    ALTER SYSTEM SET log_archive_max_processes=4 SCOPE=both;
+    ALTER SYSTEM SET fal_server='{{ dg_standby_db_unique_name }}' SCOPE=both;
+    ALTER SYSTEM SET fal_client='{{ dg_primary_db_unique_name }}' SCOPE=both;
+    ALTER SYSTEM SET standby_file_management=AUTO SCOPE=both;
+    ALTER SYSTEM SET db_unique_name='{{ dg_primary_db_unique_name }}' SCOPE=spfile;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _primary_params
+  changed_when: _primary_params.rc == 0
+  tags: [configure_primary]
+
+- name: "configure_primary | Criar standby redo logs no primary"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    {{ dg_primary_oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    DECLARE
+      v_count NUMBER;
+    BEGIN
+      SELECT count(*) INTO v_count FROM v$standby_log;
+      IF v_count = 0 THEN
+        {% for i in range(1, dg_standby_redo_log_groups + 1) %}
+        {% if oracle_storage_type == 'filesystem' %}
+        EXECUTE IMMEDIATE 'ALTER DATABASE ADD STANDBY LOGFILE GROUP {{ 100 + i }} (''{{ dg_primary_oracle_home }}/dbs/srl_g{{ 100 + i }}.log'') SIZE {{ dg_standby_redo_log_size_mb }}M';
+        {% else %}
+        EXECUTE IMMEDIATE 'ALTER DATABASE ADD STANDBY LOGFILE GROUP {{ 100 + i }} (''+{{ dg_standby_data_diskgroup }}'') SIZE {{ dg_standby_redo_log_size_mb }}M';
+        {% endif %}
+        {% endfor %}
+      END IF;
+    END;
+    /
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _srl_create
+  changed_when: _srl_create.rc == 0
+  tags: [configure_primary]
+
+- name: "configure_primary | Habilitar Data Guard Broker no primary"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    {{ dg_primary_oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    ALTER SYSTEM SET dg_broker_start=TRUE SCOPE=both;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _broker_start_primary
+  changed_when: _broker_start_primary.rc == 0
+  when: dg_broker_start | bool
+  tags: [configure_primary]
+
+- name: "configure_primary | Copiar password file para standby"
+  ansible.builtin.fetch:
+    src: "{{ dg_primary_oracle_home }}/dbs/orapw{{ dg_primary_sid }}"
+    dest: "/tmp/orapw{{ dg_primary_sid }}"
+    flat: true
+  tags: [configure_primary]
+
+- name: "configure_primary | Distribuir password file ao standby"
+  ansible.builtin.copy:
+    src: "/tmp/orapw{{ dg_primary_sid }}"
+    dest: "{{ dg_standby_oracle_home }}/dbs/orapw{{ dg_standby_sid }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  delegate_to: "{{ dg_standby_host }}"
+  tags: [configure_primary]

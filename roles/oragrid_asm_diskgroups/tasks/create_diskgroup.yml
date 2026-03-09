@@ -1,0 +1,63 @@
+---
+# =============================================================================
+# oragrid_asm_diskgroups – Criar diskgroup individual
+# Chamado via include_tasks com loop_var: diskgroup
+# =============================================================================
+
+- name: "create_diskgroup | Criar diskgroup {{ diskgroup.name }}"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    export ORACLE_SID=+ASM{{ oracle_rac_node_number | default('') }}
+    {{ grid_home }}/bin/sqlplus -s / as sysasm << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    CREATE DISKGROUP {{ diskgroup.name }}
+      {{ diskgroup.redundancy }} REDUNDANCY
+      DISK
+        {{ diskgroup.disks | join(',\n        ') }}
+    ATTRIBUTE
+    {% for key, value in diskgroup.attributes.items() %}
+      '{{ key }}' = '{{ value }}'{{ ',' if not loop.last else '' }}
+    {% endfor %};
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _create_dg
+  changed_when: "'Diskgroup created' in _create_dg.stdout"
+  failed_when:
+    - _create_dg.rc != 0
+    - "'ORA-15018' not in _create_dg.stdout"
+  tags: [create_diskgroup]
+
+- name: "create_diskgroup | Verificar se diskgroup foi criado"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    export ORACLE_SID=+ASM{{ oracle_rac_node_number | default('') }}
+    {{ grid_home }}/bin/sqlplus -s / as sysasm << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT state FROM v$asm_diskgroup
+    WHERE name = upper('{{ diskgroup.name }}');
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _dg_state
+  changed_when: false
+  tags: [create_diskgroup]
+
+- name: "create_diskgroup | Assert diskgroup está MOUNTED"
+  ansible.builtin.assert:
+    that: "'MOUNTED' in _dg_state.stdout"
+    fail_msg: >
+      Diskgroup {{ diskgroup.name }} não está MOUNTED em {{ inventory_hostname }}.
+      Estado atual: {{ _dg_state.stdout | trim }}
+  tags: [create_diskgroup]
+
+- name: "create_diskgroup | Exibir resultado"
+  ansible.builtin.debug:
+    msg:
+      - "Diskgroup: {{ diskgroup.name }}"
+      - "Redundancy: {{ diskgroup.redundancy }}"
+      - "Discos: {{ diskgroup.disks | join(', ') }}"
+      - "Estado: {{ _dg_state.stdout | trim }}"
+  tags: [create_diskgroup]

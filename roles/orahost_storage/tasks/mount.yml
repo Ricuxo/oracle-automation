@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# orahost_storage – Montagem de filesystems
+# =============================================================================
+
+- name: "mount | Criar mountpoints"
+  ansible.builtin.file:
+    path: "{{ item.mountpoint }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  loop: "{{ oracle_fs_volumes }}"
+  loop_control:
+    label: "{{ item.mountpoint }}"
+  tags: [mount]
+
+- name: "mount | Montar filesystems e adicionar ao fstab"
+  ansible.posix.mount:
+    src: "{{ item.partition }}"
+    path: "{{ item.mountpoint }}"
+    fstype: "{{ item.fstype | default(oracle_fs_type) }}"
+    opts: "{{ item.mount_opts | default(oracle_fs_mount_opts) }}"
+    state: mounted
+  loop: "{{ oracle_fs_volumes }}"
+  loop_control:
+    label: "{{ item.mountpoint }}"
+  tags: [mount]
+
+- name: "mount | Verificar filesystems montados"
+  ansible.builtin.command: >
+    df -hP {{ item.mountpoint }}
+  register: _df_check
+  changed_when: false
+  loop: "{{ oracle_fs_volumes }}"
+  loop_control:
+    label: "{{ item.mountpoint }}"
+  tags: [mount]
+
+- name: "mount | Exibir status dos filesystems"
+  ansible.builtin.debug:
+    msg: "{{ item.stdout_lines }}"
+  loop: "{{ _df_check.results }}"
+  loop_control:
+    label: "{{ item.item.mountpoint }}"
+  tags: [mount]

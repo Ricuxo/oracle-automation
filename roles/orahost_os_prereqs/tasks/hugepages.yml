@@ -1,0 +1,43 @@
+---
+# =============================================================================
+# orahost_os_prereqs – HugePages
+# Calcula automaticamente se oracle_hugepages_count = 0
+# =============================================================================
+
+- name: "hugepages | Calcular HugePages via SGA + PGA"
+  ansible.builtin.set_fact:
+    _hugepages_calculated: >-
+      {{
+        (
+          (oracle_sga_target_mb | int +
+           oracle_pga_aggregate_target_mb | int)
+          * 1024 / 2048 + 16
+        ) | int
+      }}
+  when: oracle_hugepages_count | int == 0
+  tags: [hugepages]
+
+- name: "hugepages | Definir valor final de HugePages"
+  ansible.builtin.set_fact:
+    _hugepages_final: >-
+      {{
+        oracle_hugepages_count | int
+        if oracle_hugepages_count | int > 0
+        else _hugepages_calculated | default(0)
+      }}
+  tags: [hugepages]
+
+- name: "hugepages | Exibir valor calculado"
+  ansible.builtin.debug:
+    msg: "HugePages a configurar: {{ _hugepages_final }}"
+  tags: [hugepages]
+
+- name: "hugepages | Aplicar vm.nr_hugepages via sysctl"
+  ansible.posix.sysctl:
+    name: vm.nr_hugepages
+    value: "{{ _hugepages_final }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/97-oracle-hugepages.conf
+    reload: true
+  when: _hugepages_final | int > 0
+  tags: [hugepages]

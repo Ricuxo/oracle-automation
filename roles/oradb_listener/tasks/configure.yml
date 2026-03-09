@@ -1,0 +1,54 @@
+---
+# =============================================================================
+# oradb_listener – Configurar listener standalone
+# =============================================================================
+
+- name: "configure | Criar diretório TNS_ADMIN"
+  ansible.builtin.file:
+    path: "{{ oracle_tns_admin }}"
+    state: directory
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+  tags: [configure]
+
+- name: "configure | Gerar listener.ora"
+  ansible.builtin.template:
+    src: listener.ora.j2
+    dest: "{{ oracle_tns_admin }}/listener.ora"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  notify: reload_listener
+  tags: [configure]
+
+- name: "configure | Gerar tnsnames.ora"
+  ansible.builtin.template:
+    src: tnsnames.ora.j2
+    dest: "{{ oracle_tns_admin }}/tnsnames.ora"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  tags: [configure]
+
+- name: "configure | Verificar se listener está rodando"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    {{ oracle_home }}/bin/lsnrctl status {{ oracle_listener_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _lsnr_status
+  changed_when: false
+  failed_when: false
+  tags: [configure]
+
+- name: "configure | Iniciar listener"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    {{ oracle_home }}/bin/lsnrctl start {{ oracle_listener_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _lsnr_start
+  changed_when: _lsnr_start.rc == 0
+  when: "'TNS-12541' in _lsnr_status.stdout or _lsnr_status.rc != 0"
+  tags: [configure]

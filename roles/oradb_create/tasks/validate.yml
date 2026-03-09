@@ -1,0 +1,103 @@
+---
+# =============================================================================
+# oradb_create – Validar banco criado
+# =============================================================================
+
+- name: "validate | Verificar processo pmon"
+  ansible.builtin.shell: |
+    ps -ef | grep pmon | grep -i {{ oracle_db_name }} | grep -v grep
+  register: _pmon_check
+  changed_when: false
+  failed_when: false
+  tags: [validate]
+
+- name: "validate | Assert pmon está rodando"
+  ansible.builtin.assert:
+    that: _pmon_check.rc == 0
+    fail_msg: >
+      Processo pmon não encontrado para {{ oracle_db_name }} em {{ inventory_hostname }}.
+      Verifique os logs em {{ oracle_base }}/diag/rdbms.
+  tags: [validate]
+
+- name: "validate | Verificar status do banco"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT status FROM v$instance;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _db_status
+  changed_when: false
+  tags: [validate]
+
+- name: "validate | Assert banco está OPEN"
+  ansible.builtin.assert:
+    that: "'OPEN' in _db_status.stdout"
+    fail_msg: >
+      Banco {{ oracle_db_name }} não está OPEN em {{ inventory_hostname }}.
+      Status atual: {{ _db_status.stdout | trim }}
+  tags: [validate]
+
+- name: "validate | Verificar PDB"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT name, open_mode FROM v$pdbs WHERE name = upper('{{ oracle_pdb_name }}');
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _pdb_status
+  changed_when: false
+  tags: [validate]
+
+- name: "validate | Assert PDB está READ WRITE"
+  ansible.builtin.assert:
+    that: "'READ WRITE' in _pdb_status.stdout"
+    fail_msg: >
+      PDB {{ oracle_pdb_name }} não está READ WRITE em {{ inventory_hostname }}.
+      Status atual: {{ _pdb_status.stdout | trim }}
+  tags: [validate]
+
+- name: "validate | Verificar archivelog"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT log_mode FROM v$database;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _archivelog_status
+  changed_when: false
+  when: oracle_enable_archivelog | bool
+  tags: [validate]
+
+- name: "validate | Assert archivelog habilitado"
+  ansible.builtin.assert:
+    that: "'ARCHIVELOG' in _archivelog_status.stdout"
+    fail_msg: >
+      Banco {{ oracle_db_name }} não está em ARCHIVELOG em {{ inventory_hostname }}.
+  when: oracle_enable_archivelog | bool
+  tags: [validate]
+
+- name: "validate | Exibir resumo da criação"
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Banco: {{ oracle_db_name }}"
+      - "Status: {{ _db_status.stdout | trim }}"
+      - "PDB: {{ oracle_pdb_name }} – {{ _pdb_status.stdout | trim }}"
+      - "Archivelog: {{ _archivelog_status.stdout | trim if oracle_enable_archivelog else 'desabilitado' }}"
+  tags: [validate]

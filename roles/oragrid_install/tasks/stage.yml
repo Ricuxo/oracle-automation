@@ -1,0 +1,39 @@
+---
+# =============================================================================
+# oragrid_install – Descompactar instalador
+# =============================================================================
+
+- name: "stage | Criar diretório grid_home"
+  ansible.builtin.file:
+    path: "{{ grid_home }}"
+    state: directory
+    owner: "{{ grid_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0775"
+  tags: [stage]
+
+- name: "stage | Descompactar instalador Grid"
+  ansible.builtin.unarchive:
+    src: "{{ grid_installer_path }}"
+    dest: "{{ grid_home }}"
+    owner: "{{ grid_user }}"
+    group: "{{ oracle_group }}"
+    remote_src: true
+    creates: "{{ grid_home }}/gridSetup.sh"
+  become: true
+  become_user: "{{ grid_user }}"
+  tags: [stage]
+
+- name: "stage | Verificar se gridSetup.sh existe"
+  ansible.builtin.stat:
+    path: "{{ grid_home }}/gridSetup.sh"
+  register: _gridsetup_stat
+  tags: [stage]
+
+- name: "stage | Falhar se gridSetup.sh não encontrado"
+  ansible.builtin.assert:
+    that: _gridsetup_stat.stat.exists
+    fail_msg: >
+      gridSetup.sh não encontrado em {{ grid_home }}.
+      Verifique se o instalador foi descompactado corretamente.
+  tags: [stage]

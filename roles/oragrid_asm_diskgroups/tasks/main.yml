@@ -1,0 +1,86 @@
+---
+# =============================================================================
+# oragrid_asm_diskgroups – Tasks
+# Responsabilidade: criação dos diskgroups ASM
+# =============================================================================
+
+- name: "oragrid_asm_diskgroups | Verificar se diskgroups foram definidos"
+  ansible.builtin.assert:
+    that: oracle_asm_diskgroups | length > 0
+    fail_msg: >
+      Nenhum diskgroup definido em oracle_asm_diskgroups.
+      Revise o arquivo group_vars ou host_vars.
+  tags: [oragrid_asm_diskgroups]
+
+- name: "oragrid_asm_diskgroups | Verificar se ASM está rodando"
+  ansible.builtin.command: >
+    {{ grid_home }}/bin/srvctl status asm
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _asm_running
+  changed_when: false
+  failed_when: false
+  tags: [oragrid_asm_diskgroups]
+
+- name: "oragrid_asm_diskgroups | Falhar se ASM não está rodando"
+  ansible.builtin.assert:
+    that: "'is running' in _asm_running.stdout"
+    fail_msg: >
+      ASM não está rodando em {{ inventory_hostname }}.
+      Execute a role oragrid_install antes de oragrid_asm_diskgroups.
+  tags: [oragrid_asm_diskgroups]
+
+- name: "oragrid_asm_diskgroups | Verificar diskgroups existentes"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    export ORACLE_SID=+ASM{{ oracle_rac_node_number | default('') }}
+    {{ grid_home }}/bin/sqlplus -s / as sysasm << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT name FROM v$asm_diskgroup;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _existing_diskgroups
+  changed_when: false
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [oragrid_asm_diskgroups]
+
+- name: "oragrid_asm_diskgroups | Criar diskgroups"
+  ansible.builtin.include_tasks: create_diskgroup.yml
+  loop: "{{ oracle_asm_diskgroups }}"
+  loop_control:
+    loop_var: diskgroup
+    label: "{{ diskgroup.name }}"
+  when: diskgroup.name | upper not in _existing_diskgroups.stdout | upper
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [oragrid_asm_diskgroups]
+
+- name: "oragrid_asm_diskgroups | Listar diskgroups configurados"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    export ORACLE_SID=+ASM{{ oracle_rac_node_number | default('') }}
+    {{ grid_home }}/bin/sqlplus -s / as sysasm << 'SQLEOF'
+    set linesize 120
+    col name format a20
+    col state format a12
+    col type format a10
+    col total_mb format 999999
+    col free_mb format 999999
+    SELECT name, state, type, total_mb, free_mb
+    FROM v$asm_diskgroup
+    ORDER BY name;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _diskgroups_list
+  changed_when: false
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [oragrid_asm_diskgroups]
+
+- name: "oragrid_asm_diskgroups | Exibir diskgroups configurados"
+  ansible.builtin.debug:
+    msg: "{{ _diskgroups_list.stdout_lines }}"
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [oragrid_asm_diskgroups]

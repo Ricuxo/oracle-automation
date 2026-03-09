@@ -1,0 +1,86 @@
+---
+# =============================================================================
+# oradb_patching – Verificar versão OPatch
+# =============================================================================
+
+- name: "check_opatch | Verificar versão OPatch RDBMS"
+  ansible.builtin.shell: |
+    {{ oracle_opatch_dir }}/opatch version
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _opatch_version_rdbms
+  changed_when: false
+  tags: [check_opatch]
+
+- name: "check_opatch | Exibir versão OPatch RDBMS"
+  ansible.builtin.debug:
+    msg: "OPatch RDBMS: {{ _opatch_version_rdbms.stdout_lines }}"
+  tags: [check_opatch]
+
+- name: "check_opatch | Verificar versão OPatch Grid"
+  ansible.builtin.shell: |
+    {{ oracle_opatchauto_dir }}/opatch version
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _opatch_version_grid
+  changed_when: false
+  failed_when: false
+  when: oracle_storage_type == 'asm'
+  tags: [check_opatch]
+
+- name: "check_opatch | Exibir versão OPatch Grid"
+  ansible.builtin.debug:
+    msg: "OPatch Grid: {{ _opatch_version_grid.stdout_lines }}"
+  when: oracle_storage_type == 'asm'
+  tags: [check_opatch]
+
+- name: "check_opatch | Verificar conflitos patch RDBMS"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    {{ oracle_opatch_dir }}/opatch prereq CheckConflictAgainstOHWithDetail \
+      -ph {{ oracle_patch_dir }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _opatch_conflict_rdbms
+  changed_when: false
+  failed_when: "'failed' in _opatch_conflict_rdbms.stdout | lower"
+  tags: [check_opatch]
+
+- name: "check_opatch | Verificar conflitos patch Grid"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ oracle_opatchauto_dir }}/opatch prereq CheckConflictAgainstOHWithDetail \
+      -ph {{ oracle_patch_dir }}
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _opatch_conflict_grid
+  changed_when: false
+  failed_when: "'failed' in _opatch_conflict_grid.stdout | lower"
+  when: oracle_storage_type == 'asm'
+  tags: [check_opatch]
+
+- name: "check_opatch | Verificar espaço em disco para patch"
+  ansible.builtin.shell: |
+    df -hP {{ oracle_home }} | awk 'NR==2 {print $5}' | tr -d '%'
+  register: _oracle_home_usage
+  changed_when: false
+  tags: [check_opatch]
+
+- name: "check_opatch | Assert espaço suficiente para patch"
+  ansible.builtin.assert:
+    that: _oracle_home_usage.stdout | trim | int < 85
+    fail_msg: >
+      Espaço insuficiente em {{ oracle_home }}.
+      Uso atual: {{ _oracle_home_usage.stdout | trim }}%.
+      Libere espaço antes de aplicar o patch.
+  tags: [check_opatch]
+
+- name: "check_opatch | Exibir resumo pré-requisitos"
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Patch ID: {{ oracle_patch_id }}"
+      - "OPatch RDBMS: {{ _opatch_version_rdbms.stdout_lines[0] | default('N/A') }}"
+      - "Conflitos RDBMS: {{ 'OK' if 'succeeded' in _opatch_conflict_rdbms.stdout | lower else 'FALHOU' }}"
+      - "Espaço {{ oracle_home }}: {{ _oracle_home_usage.stdout | trim }}%"
+  tags: [check_opatch]

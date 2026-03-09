@@ -1,0 +1,34 @@
+---
+# =============================================================================
+# orahost_common – Tasks
+# Responsabilidade: ferramentas base necessárias para o ambiente Oracle
+# =============================================================================
+
+- name: "orahost_common | Instalar pacotes base"
+  ansible.builtin.package:
+    name: "{{ orahost_common_packages }}"
+    state: present
+  retries: 3
+  delay: 10
+  register: _common_packages
+  until: _common_packages is succeeded
+  tags: [orahost_common, packages]
+
+- name: "orahost_common | Verificar se rlwrap foi instalado"
+  ansible.builtin.command: which rlwrap
+  register: _rlwrap_check
+  changed_when: false
+  failed_when: false
+  tags: [orahost_common, packages]
+
+- name: "orahost_common | Exibir versão do rlwrap"
+  ansible.builtin.command: rlwrap --version
+  register: _rlwrap_version
+  changed_when: false
+  when: _rlwrap_check.rc == 0
+  tags: [orahost_common, packages]
+
+- name: "orahost_common | Exibir resultado"
+  ansible.builtin.debug:
+    msg: "rlwrap instalado: {{ _rlwrap_version.stdout | default('não encontrado') }}"
+  tags: [orahost_common, packages]

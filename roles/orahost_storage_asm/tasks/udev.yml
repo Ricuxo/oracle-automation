@@ -1,0 +1,67 @@
+---
+# =============================================================================
+# orahost_storage_asm – udev
+# Configura permissões de discos ASM via regras udev puras
+# Não requer driver adicional, funciona em qualquer distro
+# =============================================================================
+
+- name: "udev | Verificar se disco possui by-id definido"
+  ansible.builtin.assert:
+    that: item.by_id is defined
+    fail_msg: >
+      Disco {{ item.label }} não possui by_id definido.
+      Para uso com udev é recomendado identificar o disco via
+      by_id (WWN) para evitar mudança de device name após reboot.
+      Verifique com: ls -la /dev/disk/by-id/
+  loop: "{{ oracle_asm_disks }}"
+  loop_control:
+    label: "{{ item.label }}"
+  when: oracle_udev_require_by_id | default(false) | bool
+  tags: [udev]
+
+- name: "udev | Gerar regras udev para discos ASM"
+  ansible.builtin.template:
+    src: asm_udev.rules.j2
+    dest: /etc/udev/rules.d/99-oracle-asm.rules
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload_udev
+    - trigger_udev
+  tags: [udev]
+
+- name: "udev | Recarregar regras udev imediatamente"
+  ansible.builtin.command: udevadm control --reload-rules
+  changed_when: false
+  tags: [udev]
+
+- name: "udev | Aplicar regras udev nos dispositivos"
+  ansible.builtin.command: udevadm trigger --type=devices --action=change
+  changed_when: false
+  tags: [udev]
+
+- name: "udev | Aguardar udev processar eventos"
+  ansible.builtin.command: udevadm settle
+  changed_when: false
+  tags: [udev]
+
+- name: "udev | Verificar permissões dos discos"
+  ansible.builtin.stat:
+    path: "{{ item.device }}"
+  register: _udev_disk_stat
+  loop: "{{ oracle_asm_disks }}"
+  loop_control:
+    label: "{{ item.device }}"
+  tags: [udev]
+
+- name: "udev | Exibir permissões aplicadas"
+  ansible.builtin.debug:
+    msg: >
+      Disco: {{ item.item.device }}
+      Owner: {{ item.stat.pw_name }}
+      Mode: {{ item.stat.mode }}
+  loop: "{{ _udev_disk_stat.results }}"
+  loop_control:
+    label: "{{ item.item.device }}"
+  tags: [udev]

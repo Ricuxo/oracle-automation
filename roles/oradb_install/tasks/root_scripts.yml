@@ -1,0 +1,102 @@
+---
+# =============================================================================
+# oradb_install – Executar root scripts RDBMS
+# Ordem obrigatória:
+#   1. orainstRoot.sh (apenas se inventory não foi criado pelo Grid)
+#   2. root.sh em todos os nós
+# =============================================================================
+
+- name: "root_scripts | Verificar se oraInventory já foi configurado"
+  ansible.builtin.stat:
+    path: /etc/oraInst.loc
+  register: _orainst_loc
+  tags: [root_scripts]
+
+- name: "root_scripts | Executar orainstRoot.sh"
+  ansible.builtin.command: "{{ oracle_inventory_location }}/orainstRoot.sh"
+  become: true
+  become_user: root
+  args:
+    creates: /etc/oraInst.loc
+  register: _orainst_root
+  changed_when: _orainst_root.rc == 0
+  when: not _orainst_loc.stat.exists
+  tags: [root_scripts]
+
+- name: "root_scripts | Executar root.sh – standalone"
+  ansible.builtin.command: "{{ oracle_home }}/root.sh"
+  become: true
+  become_user: root
+  register: _root_sh
+  changed_when: _root_sh.rc == 0
+  failed_when:
+    - _root_sh.rc != 0
+    - "'already exists' not in _root_sh.stdout"
+  when: oracle_deployment_type == 'standalone'
+  tags: [root_scripts]
+
+- name: "root_scripts | Executar root.sh – primeiro nó RAC"
+  ansible.builtin.command: "{{ oracle_home }}/root.sh"
+  become: true
+  become_user: root
+  register: _root_sh_first
+  changed_when: _root_sh_first.rc == 0
+  failed_when:
+    - _root_sh_first.rc != 0
+    - "'already exists' not in _root_sh_first.stdout"
+  when:
+    - oracle_deployment_type == 'rac'
+    - inventory_hostname == ansible_play_hosts[0]
+  tags: [root_scripts, rac]
+
+- name: "root_scripts | Aguardar estabilização"
+  ansible.builtin.pause:
+    seconds: 20
+    prompt: "Aguardando estabilização após root.sh no primeiro nó..."
+  when:
+    - oracle_deployment_type == 'rac'
+    - inventory_hostname == ansible_play_hosts[0]
+    - _root_sh_first is changed
+  tags: [root_scripts, rac]
+
+- name: "root_scripts | Executar root.sh – demais nós RAC"
+  ansible.builtin.command: "{{ oracle_home }}/root.sh"
+  become: true
+  become_user: root
+  register: _root_sh_remain
+  changed_when: _root_sh_remain.rc == 0
+  failed_when:
+    - _root_sh_remain.rc != 0
+    - "'already exists' not in _root_sh_remain.stdout"
+  when:
+    - oracle_deployment_type == 'rac'
+    - inventory_hostname != ansible_play_hosts[0]
+  tags: [root_scripts, rac]
+
+- name: "root_scripts | Verificar instalação RDBMS"
+  ansible.builtin.command: "{{ oracle_home }}/bin/sqlplus -version"
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _sqlplus_version
+  changed_when: false
+  tags: [root_scripts]
+
+- name: "root_scripts | Exibir versão SQLPlus"
+  ansible.builtin.debug:
+    msg: "{{ _sqlplus_version.stdout_lines }}"
+  tags: [root_scripts]
+```
+
+---
+
+Chegamos ao arquivo 70. O projeto está bem avançado. Ainda temos pendentes:
+```
+roles/oradb_create/
+roles/oradb_listener/
+roles/oradb_config/
+roles/oradb_dataguard/
+roles/oradb_patching/
+roles/oradb_healthcheck/
+plugins/modules/
+plugins/filter/
+inventories/prod/

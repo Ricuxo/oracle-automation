@@ -1,0 +1,74 @@
+---
+# =============================================================================
+# oradb_healthcheck – Resumo final do healthcheck
+# =============================================================================
+
+- name: "summary | Consolidar resultados SO"
+  ansible.builtin.set_fact:
+    _hc_os_ok: >-
+      {{ '[never]' in _thp_check.stdout and
+         'Not synchronised' not in _ntp_check.stdout }}
+  tags: [summary]
+
+- name: "summary | Consolidar resultados listener"
+  ansible.builtin.set_fact:
+    _hc_listener_ok: >-
+      {{ (oracle_storage_type == 'filesystem' and 'TNS-12541' not in _lsnr_fs_check.stdout)
+         or (oracle_storage_type == 'asm' and 'TNS-12541' not in _lsnr_grid_check.stdout) }}
+  tags: [summary]
+
+- name: "summary | Consolidar resultados ASM"
+  ansible.builtin.set_fact:
+    _hc_asm_ok: >-
+      {{ _asm_pmon_check.rc == 0 and
+         'is running' in _asm_srvctl_check.stdout and
+         _asm_disk_errors.stdout | trim | int == 0 }}
+  when: oracle_storage_type == 'asm'
+  tags: [summary]
+
+- name: "summary | Consolidar resultados RAC"
+  ansible.builtin.set_fact:
+    _hc_rac_ok: >-
+      {{ _crs_check.rc == 0 and
+         'integrity check succeeded' in _ocr_check.stdout | lower and
+         _crs_offline.stdout | trim | int == 0 }}
+  when: oracle_deployment_type == 'rac'
+  run_once: true
+  tags: [summary]
+
+- name: "summary | Consolidar resultados banco"
+  ansible.builtin.set_fact:
+    _hc_db_ok: >-
+      {{ 'OPEN:ACTIVE' in _instance_status.stdout and
+         (_fra_usage.stdout | trim | int < oracle_healthcheck_fra_pct_critical
+          if _fra_usage.stdout | trim | length > 0 else true) }}
+  tags: [summary]
+
+- name: "summary | Exibir resumo completo"
+  ansible.builtin.debug:
+    msg:
+      - "============================================================"
+      - " ORACLE HEALTHCHECK – {{ inventory_hostname }}"
+      - " Data: {{ ansible_date_time.iso8601 }}"
+      - "============================================================"
+      - " SO:           {{ 'OK' if _hc_os_ok else 'FALHOU' }}"
+      - " Listener:     {{ 'OK' if _hc_listener_ok else 'FALHOU' }}"
+      - " ASM:          {{ 'OK' if _hc_asm_ok | default(true) else 'FALHOU' }}{{ ' (N/A)' if oracle_storage_type != 'asm' else '' }}"
+      - " RAC:          {{ 'OK' if _hc_rac_ok | default(true) else 'FALHOU' }}{{ ' (N/A)' if oracle_deployment_type != 'rac' else '' }}"
+      - " Banco:        {{ 'OK' if _hc_db_ok else 'FALHOU' }}"
+      - " Instância:    {{ _instance_status.stdout | trim }}"
+      - " Archivelog:   {{ _archivelog_status.stdout | trim }}"
+      - " FRA uso:      {{ _fra_usage.stdout | trim + '%' if _fra_usage.stdout | trim | length > 0 else 'N/A' }}"
+      - "============================================================"
+  tags: [summary]
+
+- name: "summary | Falhar se algum check crítico falhou"
+  ansible.builtin.assert:
+    that:
+      - _hc_os_ok | bool
+      - _hc_listener_ok | bool
+      - _hc_db_ok | bool
+    fail_msg: >
+      Healthcheck falhou em {{ inventory_hostname }}.
+      Revise os resultados acima antes de prosseguir.
+  tags: [summary]

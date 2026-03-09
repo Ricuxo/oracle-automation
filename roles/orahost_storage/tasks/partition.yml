@@ -1,0 +1,45 @@
+---
+# =============================================================================
+# orahost_storage – Particionamento de discos
+# =============================================================================
+
+- name: "partition | Verificar se disco já está particionado"
+  ansible.builtin.command: >
+    parted -s {{ item.device }} print
+  register: _partition_check
+  changed_when: false
+  failed_when: false
+  loop: "{{ oracle_fs_volumes }}"
+  loop_control:
+    label: "{{ item.device }}"
+  tags: [partition]
+
+- name: "partition | Criar tabela de partição GPT"
+  ansible.builtin.command: >
+    parted -s {{ item.item.device }} mklabel gpt
+  when: "'Partition Table: gpt' not in item.stdout"
+  loop: "{{ _partition_check.results }}"
+  loop_control:
+    label: "{{ item.item.device }}"
+  register: _mklabel
+  changed_when: _mklabel.rc == 0
+  tags: [partition]
+
+- name: "partition | Criar partição primária"
+  ansible.builtin.command: >
+    parted -s {{ item.item.device }} mkpart primary 0% {{ item.item.size | default('100%') }}
+  when: "'primary' not in item.stdout"
+  loop: "{{ _partition_check.results }}"
+  loop_control:
+    label: "{{ item.item.device }}"
+  register: _mkpart
+  changed_when: _mkpart.rc == 0
+  tags: [partition]
+
+- name: "partition | Aguardar kernel reconhecer partições"
+  ansible.builtin.command: partprobe {{ item.device }}
+  loop: "{{ oracle_fs_volumes }}"
+  loop_control:
+    label: "{{ item.device }}"
+  changed_when: false
+  tags: [partition]

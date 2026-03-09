@@ -1,0 +1,41 @@
+# ~/scripts/grid_env
+# Gerenciado pelo Ansible – orahost_directories
+# Arquivo de ambiente para Grid Infrastructure
+# Uso: . ~/scripts/grid_env
+
+# ── Grid Infrastructure ───────────────────────────────────────────────────────
+export ORACLE_SID=+ASM{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+export ORACLE_BASE={{ grid_base }}
+export ORACLE_HOME={{ grid_home }}
+export GRID_HOME={{ grid_home }}
+export ORACLE_UNQNAME=+ASM
+
+# ── TNS ───────────────────────────────────────────────────────────────────────
+export TNS_ADMIN=$ORACLE_HOME/network/admin
+
+# ── PATH ──────────────────────────────────────────────────────────────────────
+export PATH=$ORACLE_HOME/bin:$ORACLE_HOME/OPatch:/usr/sbin:$PATH
+
+# ── Libraries ─────────────────────────────────────────────────────────────────
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:/usr/lib
+export LIBPATH=$ORACLE_HOME/lib:lib:/usr/lib
+export SHLIB_PATH=$ORACLE_HOME/lib
+export CLASSPATH=$ORACLE_HOME/JRE:$ORACLE_HOME/jlib:$ORACLE_HOME/rdbms/jlib
+export CLASSPATH=$CLASSPATH:$ORACLE_HOME/network/jlib
+
+# ── NLS ───────────────────────────────────────────────────────────────────────
+export NLS_LANG='AMERICAN_AMERICA.AL32UTF8'
+export NLS_DATE_FORMAT="DD-MON-YYYY HH24:MI:SS"
+
+# ── Diretórios temporários ────────────────────────────────────────────────────
+export TMPDIR={{ grid_base }}/TMPDIR
+export TEMP={{ grid_base }}/TEMP
+
+# ── Alias alert log ASM ───────────────────────────────────────────────────────
+alias alert="tail -100f $ORACLE_BASE/diag/asm/\`echo \$ORACLE_SID | sed 's/.\{0\}$//' | tr [:upper:] [:lower:]\`/\$ORACLE_SID/trace/alert_\$ORACLE_SID.log"
+alias sql='rlwrap sqlplus / as sysasm'
+alias asmcmd='rlwrap asmcmd -p'
+
+echo "Ambiente carregado: $ORACLE_SID @ $ORACLE_HOME"
+ps -ef | grep pmon | grep -v grep

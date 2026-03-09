@@ -1,0 +1,128 @@
+---
+# =============================================================================
+# oradb_dataguard – Validar Data Guard
+# Executado no host primary via delegate_to
+# =============================================================================
+
+- name: "validate | Verificar configuração broker"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    export TNS_ADMIN={{ dg_tns_admin }}
+    {{ dg_primary_oracle_home }}/bin/dgmgrl sys/{{ dg_sys_password }}@{{ dg_primary_db_unique_name }} << 'DGEOF'
+    SHOW CONFIGURATION;
+    EXIT;
+    DGEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _broker_config
+  changed_when: false
+  no_log: true
+  tags: [validate]
+
+- name: "validate | Assert configuração broker SUCCESS"
+  ansible.builtin.assert:
+    that: "'SUCCESS' in _broker_config.stdout"
+    fail_msg: >
+      Data Guard Broker não está SUCCESS em {{ dg_primary_host }}.
+      Execute: dgmgrl / 'show configuration'
+  tags: [validate]
+
+- name: "validate | Verificar status primary no broker"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    export TNS_ADMIN={{ dg_tns_admin }}
+    {{ dg_primary_oracle_home }}/bin/dgmgrl sys/{{ dg_sys_password }}@{{ dg_primary_db_unique_name }} << 'DGEOF'
+    SHOW DATABASE VERBOSE {{ dg_primary_db_unique_name }};
+    EXIT;
+    DGEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _primary_broker_status
+  changed_when: false
+  no_log: true
+  tags: [validate]
+
+- name: "validate | Verificar status standby no broker"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    export TNS_ADMIN={{ dg_tns_admin }}
+    {{ dg_primary_oracle_home }}/bin/dgmgrl sys/{{ dg_sys_password }}@{{ dg_primary_db_unique_name }} << 'DGEOF'
+    SHOW DATABASE VERBOSE {{ dg_standby_db_unique_name }};
+    EXIT;
+    DGEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _standby_broker_status
+  changed_when: false
+  no_log: true
+  tags: [validate]
+
+- name: "validate | Verificar lag de aplicação"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_primary_oracle_home }}
+    export ORACLE_SID={{ dg_primary_sid }}
+    {{ dg_primary_oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set linesize 120 pagesize 50
+    col name format a30
+    col value format a30
+    col datum_time format a30
+    SELECT name, value, datum_time
+    FROM v$dataguard_stats
+    WHERE name IN ('transport lag','apply lag','apply finish time')
+    ORDER BY name;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _dg_lag
+  changed_when: false
+  tags: [validate]
+
+- name: "validate | Verificar status MRP no standby"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ dg_standby_oracle_home }}
+    export ORACLE_SID={{ dg_standby_sid }}
+    {{ dg_standby_oracle_home }}/bin/sqlplus -s sys/{{ dg_sys_password }}@{{ dg_standby_db_unique_name }} as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT process || ':' || status || ':' || sequence#
+    FROM v$managed_standby
+    WHERE process = 'MRP0';
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _mrp_status
+  changed_when: false
+  no_log: true
+  tags: [validate]
+
+- name: "validate | Assert MRP está rodando"
+  ansible.builtin.assert:
+    that: "'MRP0' in _mrp_status.stdout"
+    fail_msg: >
+      Processo MRP0 não está rodando no standby {{ dg_standby_db_unique_name }}.
+      Verifique com: SELECT process, status FROM v$managed_standby;
+  tags: [validate]
+
+- name: "validate | Exibir resumo Data Guard"
+  ansible.builtin.debug:
+    msg:
+      - "============================================================"
+      - " DATA GUARD – {{ dg_broker_config_name }}"
+      - " Data: {{ ansible_date_time.iso8601 }}"
+      - "============================================================"
+      - " Primary:          {{ dg_primary_db_unique_name }} @ {{ dg_primary_host }}"
+      - " Standby:          {{ dg_standby_db_unique_name }} @ {{ dg_standby_host }}"
+      - " Protection Mode:  {{ dg_protection_mode }}"
+      - " Transport:        {{ dg_redo_transport }}"
+      - " Broker:           {{ 'SUCCESS' if 'SUCCESS' in _broker_config.stdout else 'FALHOU' }}"
+      - " MRP0:             {{ 'OK' if 'MRP0' in _mrp_status.stdout else 'FALHOU' }}"
+      - " Storage:          {{ oracle_storage_type }}"
+      - "============================================================"
+      - " Apply Lag:"
+      - "{{ _dg_lag.stdout_lines }}"
+      - "============================================================"
+  tags: [validate]

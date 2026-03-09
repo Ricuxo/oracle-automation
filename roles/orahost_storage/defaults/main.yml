@@ -1,0 +1,44 @@
+---
+# =============================================================================
+# orahost_storage – Default Variables
+# Responsabilidade: configuração de filesystem para Oracle
+# Utilizado quando oracle_storage_type = filesystem
+# =============================================================================
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+oracle_storage_type: filesystem
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+oracle_user: oracle
+oracle_group: oinstall
+
+# ── Filesystem type ───────────────────────────────────────────────────────────
+# Valores válidos: xfs | ext4
+oracle_fs_type: xfs
+
+# ── Opções de montagem ────────────────────────────────────────────────────────
+oracle_fs_mount_opts: "defaults,noatime,nodiratime"
+
+# ── Definição dos volumes ─────────────────────────────────────────────────────
+# Cada item representa um disco/partição a ser configurado
+oracle_fs_volumes: []
+# Exemplo:
+# oracle_fs_volumes:
+#   - device: /dev/sdb
+#     partition: /dev/sdb1
+#     mountpoint: /u01
+#     fstype: xfs
+#     mount_opts: "defaults,noatime,nodiratime"
+#     size: "100%"
+#   - device: /dev/sdc
+#     partition: /dev/sdc1
+#     mountpoint: /u02
+#     fstype: xfs
+#     mount_opts: "defaults,noatime,nodiratime"
+#     size: "100%"
+#   - device: /dev/sdd
+#     partition: /dev/sdd1
+#     mountpoint: /u03
+#     fstype: xfs
+#     mount_opts: "defaults,noatime,nodiratime"
+#     size: "100%"

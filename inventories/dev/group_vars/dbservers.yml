@@ -1,2 +1,44 @@
-ansible_user: root
+---
+# =============================================================================
+# group_vars – DEV – dbservers
+# Apenas variáveis que sobrescrevem os defaults das roles
+# =============================================================================
+
+# ── Conexão Ansible ───────────────────────────────────────────────────────────
+ansible_user: oracle_ansible
 ansible_become: true
+ansible_become_method: sudo
+
+# ── Versão Oracle ─────────────────────────────────────────────────────────────
+oracle_version: "19.3.0"
+oracle_version_major: "19"
+oracle_edition: EE
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+# Valores válidos: filesystem | asm
+oracle_storage_type: filesystem
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+# Valores válidos: standalone | rac
+oracle_deployment_type: standalone
+
+# ── Staging de instaladores ───────────────────────────────────────────────────
+oracle_stage_dir: /software/oracle
+
+# ── Memória ───────────────────────────────────────────────────────────────────
+oracle_sga_target_mb: 2048
+oracle_pga_aggregate_target_mb: 512
+
+# ── NTP ───────────────────────────────────────────────────────────────────────
+oracle_chrony_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+
+# ── Bootstrap ─────────────────────────────────────────────────────────────────
+bootstrap_ssh_public_key: "{{ vault_bootstrap_ssh_public_key }}"
+
+# ── Senhas via Vault ──────────────────────────────────────────────────────────
+oracle_db_sys_password: "{{ vault_oracle_sys_password }}"
+oracle_db_system_password: "{{ vault_oracle_system_password }}"
+oracle_db_pdbadmin_password: "{{ vault_oracle_pdbadmin_password }}"
+oracle_asm_monitor_password: "{{ vault_oracle_asm_monitor_password }}"

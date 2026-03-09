@@ -1,0 +1,78 @@
+---
+# =============================================================================
+# oradb_create – Default Variables
+# Responsabilidade: criação do banco de dados via DBCA silent
+# =============================================================================
+
+# ── Versão Oracle ─────────────────────────────────────────────────────────────
+oracle_version: "19.3.0"
+oracle_version_major: "19"
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+oracle_user: oracle
+oracle_group: oinstall
+
+# ── Diretórios ────────────────────────────────────────────────────────────────
+oracle_base: /u01/app/oracle
+oracle_home: "{{ oracle_home_base }}/{{ oracle_version }}/dbhome_1"
+oracle_home_base: /u01/app/oracle/product
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+oracle_deployment_type: standalone
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+oracle_storage_type: filesystem
+
+# ── Identificação do banco ────────────────────────────────────────────────────
+oracle_db_name: ORCL
+oracle_db_unique_name: "{{ oracle_db_name }}"
+oracle_sid: "{{ oracle_db_name }}"
+oracle_pdb_name: PDB1
+oracle_pdb_count: 1
+oracle_characterset: AL32UTF8
+oracle_nationalcharacterset: AL16UTF16
+
+# ── Tipo de banco ─────────────────────────────────────────────────────────────
+# Valores válidos: MULTIPURPOSE | DATA_WAREHOUSING | OLTP
+oracle_db_type: MULTIPURPOSE
+
+# ── Memória ───────────────────────────────────────────────────────────────────
+oracle_memory_mgmt_option: AUTO_SGA
+oracle_sga_target_mb: 2048
+oracle_pga_aggregate_target_mb: 512
+oracle_memory_target_mb: 0
+
+# ── Storage filesystem ────────────────────────────────────────────────────────
+oracle_data_dir: /u02/oradata
+oracle_fra_dir: /u03/fra
+oracle_redo_dir: /u04/redo
+
+# ── Storage ASM ───────────────────────────────────────────────────────────────
+oracle_asm_data_diskgroup: DATA
+oracle_asm_reco_diskgroup: RECO
+
+# ── Redo logs ─────────────────────────────────────────────────────────────────
+oracle_redo_log_size_mb: 200
+oracle_redo_log_groups: 3
+
+# ── FRA ───────────────────────────────────────────────────────────────────────
+oracle_fra_size_gb: 20
+
+# ── Archivelog ────────────────────────────────────────────────────────────────
+oracle_enable_archivelog: true
+
+# ── Senhas ────────────────────────────────────────────────────────────────────
+oracle_db_sys_password: "{{ vault_oracle_sys_password }}"
+oracle_db_system_password: "{{ vault_oracle_system_password }}"
+oracle_db_pdbadmin_password: "{{ vault_oracle_pdbadmin_password }}"
+
+# ── Response file DBCA ────────────────────────────────────────────────────────
+oracle_stage_dir: /software/oracle
+dbca_response_file: "{{ oracle_stage_dir }}/dbca_{{ oracle_db_name }}.rsp"
+
+# ── RAC ───────────────────────────────────────────────────────────────────────
+oracle_cluster_nodes: []
+# Exemplo:
+# oracle_cluster_nodes:
+#   - { hostname: rac-node1, instance: ORCL1 }
+#   - { hostname: rac-node2, instance: ORCL2 }

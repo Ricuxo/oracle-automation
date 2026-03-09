@@ -1,0 +1,57 @@
+---
+# =============================================================================
+# oradb_dataguard – Tasks
+# Responsabilidade: configuração do Data Guard Broker
+# Executado no host primary – delega operações ao standby quando necessário
+# =============================================================================
+
+- name: "oradb_dataguard | Verificar variáveis obrigatórias"
+  ansible.builtin.assert:
+    that:
+      - dg_primary_host | length > 0
+      - dg_standby_host | length > 0
+      - dg_primary_db_unique_name | length > 0
+      - dg_standby_db_unique_name | length > 0
+    fail_msg: >
+      Variáveis obrigatórias não definidas.
+      Defina dg_primary_host, dg_standby_host,
+      dg_primary_db_unique_name e dg_standby_db_unique_name.
+  tags: [oradb_dataguard]
+
+- name: "oradb_dataguard | Verificar primary está rodando"
+  ansible.builtin.shell: |
+    ps -ef | grep pmon | grep -i {{ dg_primary_sid }} | grep -v grep
+  register: _primary_pmon
+  changed_when: false
+  failed_when: _primary_pmon.rc != 0
+  delegate_to: "{{ dg_primary_host }}"
+  tags: [oradb_dataguard]
+
+- name: "oradb_dataguard | Configurar primary para Data Guard"
+  ansible.builtin.import_tasks: configure_primary.yml
+  delegate_to: "{{ dg_primary_host }}"
+  tags: [oradb_dataguard, primary]
+
+- name: "oradb_dataguard | Configurar TNS em ambos os hosts"
+  ansible.builtin.import_tasks: configure_tns.yml
+  tags: [oradb_dataguard, tns]
+
+- name: "oradb_dataguard | Preparar standby"
+  ansible.builtin.import_tasks: prepare_standby.yml
+  delegate_to: "{{ dg_standby_host }}"
+  tags: [oradb_dataguard, standby]
+
+- name: "oradb_dataguard | Gerar script RMAN duplicate"
+  ansible.builtin.import_tasks: rman_duplicate.yml
+  delegate_to: "{{ dg_standby_host }}"
+  tags: [oradb_dataguard, rman]
+
+- name: "oradb_dataguard | Configurar Data Guard Broker"
+  ansible.builtin.import_tasks: configure_broker.yml
+  delegate_to: "{{ dg_primary_host }}"
+  tags: [oradb_dataguard, broker]
+
+- name: "oradb_dataguard | Validar Data Guard"
+  ansible.builtin.import_tasks: validate.yml
+  delegate_to: "{{ dg_primary_host }}"
+  tags: [oradb_dataguard, validate]

@@ -1,0 +1,82 @@
+---
+# =============================================================================
+# oradb_config – Configurar archivelog
+# =============================================================================
+
+- name: "archivelog | Verificar modo archivelog atual"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT log_mode FROM v$database;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _archivelog_mode
+  changed_when: false
+  tags: [archivelog]
+
+- name: "archivelog | Exibir modo atual"
+  ansible.builtin.debug:
+    msg: "Modo archivelog atual: {{ _archivelog_mode.stdout | trim }}"
+  tags: [archivelog]
+
+- name: "archivelog | Habilitar archivelog"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    SHUTDOWN IMMEDIATE;
+    STARTUP MOUNT;
+    ALTER DATABASE ARCHIVELOG;
+    ALTER DATABASE OPEN;
+    ALTER PLUGGABLE DATABASE ALL OPEN;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _enable_archivelog
+  changed_when: _enable_archivelog.rc == 0
+  when: "'ARCHIVELOG' not in _archivelog_mode.stdout"
+  tags: [archivelog]
+
+- name: "archivelog | Configurar archive dest via FRA"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    ALTER SYSTEM SET log_archive_dest_1='LOCATION=USE_DB_RECOVERY_FILE_DEST' SCOPE=both;
+    ALTER SYSTEM SET log_archive_format='%t_%s_%r.dbf' SCOPE=spfile;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _archive_dest
+  changed_when: _archive_dest.rc == 0
+  when: oracle_archive_dest == ''
+  tags: [archivelog]
+
+- name: "archivelog | Configurar archive dest customizado"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    ALTER SYSTEM SET log_archive_dest_1='LOCATION={{ oracle_archive_dest }}' SCOPE=both;
+    ALTER SYSTEM SET log_archive_format='%t_%s_%r.dbf' SCOPE=spfile;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _archive_dest_custom
+  changed_when: _archive_dest_custom.rc == 0
+  when: oracle_archive_dest != ''
+  tags: [archivelog]

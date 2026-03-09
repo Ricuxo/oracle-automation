@@ -1,0 +1,166 @@
+---
+# =============================================================================
+# oradb_healthcheck – Validações de banco
+# =============================================================================
+
+- name: "check_database | Verificar status instância"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT instance_name || ':' || status || ':' || database_status
+    FROM v$instance;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _instance_status
+  changed_when: false
+  tags: [check_database]
+
+- name: "check_database | Assert instância OPEN"
+  ansible.builtin.assert:
+    that: "'OPEN:ACTIVE' in _instance_status.stdout"
+    fail_msg: >
+      Instância {{ oracle_sid }} não está OPEN em {{ inventory_hostname }}.
+      Status: {{ _instance_status.stdout | trim }}
+  tags: [check_database]
+
+- name: "check_database | Verificar status PDB"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT name || ':' || open_mode
+    FROM v$pdbs
+    WHERE name = upper('{{ oracle_pdb_name }}');
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _pdb_status
+  changed_when: false
+  when: oracle_enable_pluggable | bool
+  tags: [check_database]
+
+- name: "check_database | Assert PDB READ WRITE"
+  ansible.builtin.assert:
+    that: "'READ WRITE' in _pdb_status.stdout"
+    fail_msg: >
+      PDB {{ oracle_pdb_name }} não está READ WRITE em {{ inventory_hostname }}.
+      Status: {{ _pdb_status.stdout | trim }}
+  when: oracle_enable_pluggable | bool
+  tags: [check_database]
+
+- name: "check_database | Verificar archivelog"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT log_mode FROM v$database;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _archivelog_status
+  changed_when: false
+  tags: [check_database]
+
+- name: "check_database | Verificar uso de tablespaces"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set linesize 120 pagesize 50
+    col tablespace_name format a30
+    col used_pct format 999
+    SELECT tablespace_name,
+           round(used_space/tablespace_size*100) used_pct,
+           round(used_space*8192/1024/1024/1024,2) used_gb,
+           round(tablespace_size*8192/1024/1024/1024,2) total_gb
+    FROM dba_tablespace_usage_metrics
+    ORDER BY used_pct DESC;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _tbs_usage
+  changed_when: false
+  tags: [check_database]
+
+- name: "check_database | Exibir uso de tablespaces"
+  ansible.builtin.debug:
+    msg: "{{ _tbs_usage.stdout_lines }}"
+  tags: [check_database]
+
+- name: "check_database | Verificar FRA usage"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT round(space_used/space_limit*100)
+    FROM v$recovery_file_dest;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _fra_usage
+  changed_when: false
+  failed_when: false
+  tags: [check_database]
+
+- name: "check_database | Alertar uso FRA"
+  ansible.builtin.debug:
+    msg: >
+      ATENÇÃO: FRA com {{ _fra_usage.stdout | trim }}% de uso
+      em {{ inventory_hostname }}.
+  when:
+    - _fra_usage.stdout | trim | length > 0
+    - _fra_usage.stdout | trim | int >= oracle_healthcheck_fra_pct_warn
+    - _fra_usage.stdout | trim | int < oracle_healthcheck_fra_pct_critical
+  tags: [check_database]
+
+- name: "check_database | Falhar uso crítico FRA"
+  ansible.builtin.assert:
+    that: _fra_usage.stdout | trim | int < oracle_healthcheck_fra_pct_critical
+    fail_msg: >
+      CRÍTICO: FRA com {{ _fra_usage.stdout | trim }}% de uso
+      em {{ inventory_hostname }}.
+  when: _fra_usage.stdout | trim | length > 0
+  tags: [check_database]
+
+- name: "check_database | Verificar alertas no alert log"
+  ansible.builtin.shell: |
+    find {{ oracle_base }}/diag/rdbms \
+      -name "alert_{{ oracle_sid }}*.log" \
+      -newer /tmp/.last_healthcheck 2>/dev/null \
+      -exec grep -i "ORA-" {} \; | tail -20
+  register: _alert_log_check
+  changed_when: false
+  failed_when: false
+  tags: [check_database]
+
+- name: "check_database | Exibir alertas ORA- recentes"
+  ansible.builtin.debug:
+    msg: >
+      Alertas ORA- recentes:
+      {{ _alert_log_check.stdout_lines if _alert_log_check.stdout_lines | length > 0
+         else ['Nenhum alerta encontrado'] }}
+  tags: [check_database]
+
+- name: "check_database | Atualizar timestamp último healthcheck"
+  ansible.builtin.file:
+    path: /tmp/.last_healthcheck
+    state: touch
+    mode: "0644"
+  changed_when: false
+  tags: [check_database]

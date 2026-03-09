@@ -1,0 +1,56 @@
+---
+# =============================================================================
+# oradb_create – Gerar response file DBCA
+# Seleciona template conforme deployment_type e storage_type
+# =============================================================================
+
+- name: "response_file | Gerar response file SI filesystem"
+  ansible.builtin.template:
+    src: dbca_si_fs.rsp.j2
+    dest: "{{ dbca_response_file }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  when:
+    - oracle_deployment_type == 'standalone'
+    - oracle_storage_type == 'filesystem'
+  tags: [response_file]
+
+- name: "response_file | Gerar response file SI ASM"
+  ansible.builtin.template:
+    src: dbca_si_asm.rsp.j2
+    dest: "{{ dbca_response_file }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  when:
+    - oracle_deployment_type == 'standalone'
+    - oracle_storage_type == 'asm'
+  tags: [response_file]
+
+- name: "response_file | Gerar response file RAC ASM"
+  ansible.builtin.template:
+    src: dbca_rac_asm.rsp.j2
+    dest: "{{ dbca_response_file }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+  when:
+    - oracle_deployment_type == 'rac'
+    - oracle_storage_type == 'asm'
+  run_once: true
+  tags: [response_file]
+
+- name: "response_file | Verificar se response file foi gerado"
+  ansible.builtin.stat:
+    path: "{{ dbca_response_file }}"
+  register: _rsp_stat
+  tags: [response_file]
+
+- name: "response_file | Falhar se response file não encontrado"
+  ansible.builtin.assert:
+    that: _rsp_stat.stat.exists
+    fail_msg: >
+      Response file DBCA não gerado em {{ dbca_response_file }}.
+      Verifique o template e as variáveis definidas.
+  tags: [response_file]

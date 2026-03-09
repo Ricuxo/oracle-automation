@@ -1,0 +1,53 @@
+# DBCA Response File – Single Instance Filesystem
+# Gerenciado pelo Ansible – oradb_create
+# Gerado em: {{ ansible_date_time.iso8601 }}
+# Oracle Version: {{ oracle_version }}
+
+responseFileVersion=/oracle/assistants/rspfmt_dbca_response_schema_v19.0.0
+
+# ── Identificação ─────────────────────────────────────────────────────────────
+gdbName={{ oracle_db_name }}
+sid={{ oracle_sid }}
+databaseConfigType=SI
+policyManaged=false
+createServerPool=false
+
+# ── Template ──────────────────────────────────────────────────────────────────
+templateName=General_Purpose.dbc
+runCVUChecks=false
+
+# ── Diretórios ────────────────────────────────────────────────────────────────
+datafileDestination={{ oracle_data_dir }}/{{ oracle_db_name }}
+recoveryAreaDestination={{ oracle_fra_dir }}/{{ oracle_db_name }}
+storageType=FS
+
+# ── Characterset ─────────────────────────────────────────────────────────────
+characterSet={{ oracle_characterset }}
+nationalCharacterSet={{ oracle_nationalcharacterset }}
+
+# ── Memória ───────────────────────────────────────────────────────────────────
+memoryMgmtType={{ oracle_memory_mgmt_option }}
+totalMemory={{ oracle_sga_target_mb + oracle_pga_aggregate_target_mb }}
+
+# ── PDB ───────────────────────────────────────────────────────────────────────
+createAsContainerDatabase=true
+numberOfPDBs={{ oracle_pdb_count }}
+pdbName={{ oracle_pdb_name }}
+pdbAdminPassword={{ oracle_db_pdbadmin_password }}
+
+# ── Redo logs ─────────────────────────────────────────────────────────────────
+redoLogFileSize={{ oracle_redo_log_size_mb }}
+
+# ── Senhas ────────────────────────────────────────────────────────────────────
+sysPassword={{ oracle_db_sys_password }}
+systemPassword={{ oracle_db_system_password }}
+
+# ── Opções ────────────────────────────────────────────────────────────────────
+emConfiguration=NONE
+dvConfiguration=false
+olsConfiguration=false
+dataVaultUserName=
+dataVaultUserPassword=
+dataVaultAccountManagerName=
+dataVaultAccountManagerPassword=
+enableRecovery={{ oracle_enable_archivelog | bool | lower }}

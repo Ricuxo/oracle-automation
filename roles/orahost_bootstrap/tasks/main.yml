@@ -1,0 +1,80 @@
+---
+# =============================================================================
+# orahost_bootstrap – Tasks
+# Responsabilidade: criar usuário de automação e configurar acesso SSH
+# Executado uma única vez como root ou usuário inicial do SO
+# =============================================================================
+
+- name: "orahost_bootstrap | Verificar se chave SSH foi definida"
+  ansible.builtin.assert:
+    that: bootstrap_ssh_public_key | length > 0
+    fail_msg: >
+      bootstrap_ssh_public_key não definida.
+      Defina a chave pública SSH no group_vars ou vault antes de executar.
+  tags: [orahost_bootstrap]
+
+- name: "orahost_bootstrap | Criar grupo do usuário de automação"
+  ansible.builtin.group:
+    name: "{{ bootstrap_user_group }}"
+    state: present
+  tags: [orahost_bootstrap]
+
+- name: "orahost_bootstrap | Criar usuário de automação"
+  ansible.builtin.user:
+    name: "{{ bootstrap_user }}"
+    uid: "{{ bootstrap_user_uid }}"
+    group: "{{ bootstrap_user_group }}"
+    shell: "{{ bootstrap_user_shell }}"
+    home: "{{ bootstrap_user_home }}"
+    comment: "{{ bootstrap_user_comment }}"
+    password: "{{ bootstrap_user_password }}"
+    state: present
+  tags: [orahost_bootstrap]
+
+- name: "orahost_bootstrap | Criar diretório .ssh"
+  ansible.builtin.file:
+    path: "{{ bootstrap_user_home }}/.ssh"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_user_group }}"
+    mode: "0700"
+  tags: [orahost_bootstrap]
+
+- name: "orahost_bootstrap | Distribuir chave SSH pública"
+  ansible.posix.authorized_key:
+    user: "{{ bootstrap_user }}"
+    key: "{{ bootstrap_ssh_public_key }}"
+    state: present
+    exclusive: false
+  no_log: true
+  tags: [orahost_bootstrap]
+
+- name: "orahost_bootstrap | Configurar sudo sem senha"
+  ansible.builtin.copy:
+    content: |
+      # Ansible automation user – gerenciado pelo Ansible
+      {{ bootstrap_user }} ALL=(ALL) NOPASSWD: ALL
+    dest: "{{ bootstrap_sudoers_file }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  when: bootstrap_sudo_nopasswd | bool
+  tags: [orahost_bootstrap]
+
+- name: "orahost_bootstrap | Verificar acesso SSH do usuário criado"
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: 22
+    timeout: 30
+  delegate_to: localhost
+  tags: [orahost_bootstrap]
+
+- name: "orahost_bootstrap | Exibir resumo do bootstrap"
+  ansible.builtin.debug:
+    msg:
+      - "Usuário criado: {{ bootstrap_user }}"
+      - "Home: {{ bootstrap_user_home }}"
+      - "Sudo sem senha: {{ bootstrap_sudo_nopasswd }}"
+      - "Chave SSH distribuída com sucesso"
+  tags: [orahost_bootstrap]

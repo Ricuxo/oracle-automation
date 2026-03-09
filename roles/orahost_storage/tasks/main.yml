@@ -1,0 +1,44 @@
+---
+# =============================================================================
+# orahost_storage – Tasks
+# Responsabilidade: configuração de filesystem para Oracle
+# Utilizado quando oracle_storage_type = filesystem
+# =============================================================================
+
+- name: "orahost_storage | Verificar se role é aplicável"
+  ansible.builtin.assert:
+    that: oracle_storage_type == 'filesystem'
+    fail_msg: >
+      orahost_storage é exclusiva para oracle_storage_type = filesystem.
+      Para ASM utilize a role orahost_storage_asm.
+  tags: [orahost_storage]
+
+- name: "orahost_storage | Verificar se volumes foram definidos"
+  ansible.builtin.assert:
+    that: oracle_fs_volumes | length > 0
+    fail_msg: >
+      Nenhum volume definido em oracle_fs_volumes.
+      Revise o arquivo group_vars ou host_vars.
+  tags: [orahost_storage]
+
+- name: "orahost_storage | Instalar ferramentas de particionamento"
+  ansible.builtin.package:
+    name:
+      - parted
+      - lvm2
+      - xfsprogs
+      - e2fsprogs
+    state: present
+  tags: [orahost_storage, packages]
+
+- name: "orahost_storage | Particionar discos"
+  ansible.builtin.import_tasks: partition.yml
+  tags: [orahost_storage, partition]
+
+- name: "orahost_storage | Formatar partições"
+  ansible.builtin.import_tasks: format.yml
+  tags: [orahost_storage, format]
+
+- name: "orahost_storage | Montar filesystems"
+  ansible.builtin.import_tasks: mount.yml
+  tags: [orahost_storage, mount]

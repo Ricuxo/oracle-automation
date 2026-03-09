@@ -1,0 +1,35 @@
+---
+# =============================================================================
+# oradb_listener – Tasks
+# Responsabilidade: configuração do listener Oracle
+# Em ASM/RAC o listener é gerenciado pelo Grid – apenas valida
+# Em filesystem standalone – configura e inicia listener dedicado
+# =============================================================================
+
+- name: "oradb_listener | Listener gerenciado pelo Grid (ASM)"
+  ansible.builtin.debug:
+    msg: >
+      Storage type ASM detectado.
+      Listener gerenciado pelo Grid Infrastructure.
+      Apenas validação será executada.
+  when: oracle_storage_type == 'asm'
+  tags: [oradb_listener]
+
+- name: "oradb_listener | Configurar listener standalone (filesystem)"
+  ansible.builtin.import_tasks: configure.yml
+  when:
+    - oracle_storage_type == 'filesystem'
+    - oracle_deployment_type == 'standalone'
+  tags: [oradb_listener, configure]
+
+- name: "oradb_listener | Configurar systemd para listener"
+  ansible.builtin.import_tasks: systemd.yml
+  when:
+    - oracle_storage_type == 'filesystem'
+    - oracle_deployment_type == 'standalone'
+    - oracle_listener_systemd | bool
+  tags: [oradb_listener, systemd]
+
+- name: "oradb_listener | Validar listener"
+  ansible.builtin.import_tasks: validate.yml
+  tags: [oradb_listener, validate]

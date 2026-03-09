@@ -1,0 +1,36 @@
+---
+# =============================================================================
+# oragrid_install – Executar instalação
+# =============================================================================
+
+- name: "install | Executar gridSetup.sh silent"
+  ansible.builtin.shell: |
+    set -o pipefail
+    {{ grid_home }}/gridSetup.sh \
+      -silent \
+      -ignorePrereqFailure \
+      -responseFile {{ grid_response_file }} \
+      2>&1 | tee /tmp/grid_install_{{ ansible_date_time.epoch }}.log
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _grid_install
+  changed_when: "'Successfully Setup Software' in _grid_install.stdout"
+  failed_when:
+    - _grid_install.rc != 0
+    - "'Successfully Setup Software' not in _grid_install.stdout"
+  async: 3600
+  poll: 30
+  tags: [install]
+
+- name: "install | Exibir resultado da instalação"
+  ansible.builtin.debug:
+    msg: "Grid install rc={{ _grid_install.rc }}"
+  tags: [install]
+
+- name: "install | Salvar log de instalação"
+  ansible.builtin.fetch:
+    src: "/tmp/grid_install_{{ ansible_date_time.epoch }}.log"
+    dest: "logs/grid_install_{{ inventory_hostname }}_{{ ansible_date_time.epoch }}.log"
+    flat: true
+  failed_when: false
+  tags: [install]

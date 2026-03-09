@@ -1,0 +1,102 @@
+---
+# =============================================================================
+# install_oracle_si_asm.yml
+# Provisionamento Oracle Single Instance – ASM
+#
+# Pré-requisitos:
+#   - bootstrap.yml executado previamente
+#   - Instaladores Oracle disponíveis em oracle_stage_dir
+#   - Discos para ASM disponíveis e visíveis no SO
+#   - oracle_asm_disks definido no group_vars ou host_vars
+#
+# Uso:
+#   ansible-playbook playbooks/install_oracle_si_asm.yml \
+#     -i inventories/dev \
+#     --ask-vault-pass \
+#     --limit dev-db-02
+# =============================================================================
+
+- name: "Oracle SI ASM – Provisionamento completo"
+  hosts: oracle_si_asm
+  gather_facts: true
+  become: true
+  become_method: sudo
+
+  vars_files:
+    - "{{ inventory_dir }}/group_vars/vault.yml"
+
+  vars:
+    oracle_storage_type: asm
+    oracle_deployment_type: standalone
+
+  pre_tasks:
+    - name: "pre | Verificar conectividade"
+      ansible.builtin.ping:
+      tags: [always]
+
+    - name: "pre | Verificar se discos ASM foram definidos"
+      ansible.builtin.assert:
+        that: oracle_asm_disks | length > 0
+        fail_msg: >
+          oracle_asm_disks não definido.
+          Defina os discos ASM no host_vars ou group_vars antes de executar.
+      tags: [always]
+
+    - name: "pre | Exibir informações do host"
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "SO: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Memória total: {{ ansible_memtotal_mb }} MB"
+          - "Storage type: {{ oracle_storage_type }}"
+          - "ASM Driver: {{ oracle_asm_driver }}"
+          - "Discos ASM: {{ oracle_asm_disks | map(attribute='label') | list }}"
+      tags: [always]
+
+  roles:
+    - role: orahost_common
+      tags: [orahost_common]
+
+    - role: orahost_os_prereqs
+      tags: [orahost_os_prereqs]
+
+    - role: orahost_directories
+      tags: [orahost_directories]
+
+    - role: orahost_storage_asm
+      tags: [orahost_storage_asm]
+
+    - role: oragrid_install
+      tags: [oragrid_install]
+
+    - role: oragrid_asm_diskgroups
+      tags: [oragrid_asm_diskgroups]
+
+    - role: oradb_install
+      tags: [oradb_install]
+
+    - role: oradb_listener
+      tags: [oradb_listener]
+
+    - role: oradb_create
+      tags: [oradb_create]
+
+    - role: oradb_config
+      tags: [oradb_config]
+
+    - role: oradb_healthcheck
+      tags: [oradb_healthcheck]
+
+  post_tasks:
+    - name: "post | Exibir resumo da instalação"
+      ansible.builtin.debug:
+        msg:
+          - "Instalação concluída com sucesso"
+          - "Host: {{ inventory_hostname }}"
+          - "Oracle Version: {{ oracle_version }}"
+          - "Storage Type: {{ oracle_storage_type }}"
+          - "ASM Driver: {{ oracle_asm_driver }}"
+          - "Grid Home: {{ grid_home }}"
+          - "Oracle Base: {{ oracle_base }}"
+          - "Oracle Home: {{ oracle_home | default(oracle_home_base + '/' + oracle_version + '/dbhome_1') }}"
+      tags: [always]

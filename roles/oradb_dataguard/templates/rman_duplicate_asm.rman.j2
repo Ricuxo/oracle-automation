@@ -1,0 +1,44 @@
+# RMAN Duplicate Script – ASM
+# Gerenciado pelo Ansible – oradb_dataguard
+# Gerado em: {{ ansible_date_time.iso8601 }}
+
+run {
+    {% for i in range(1, dg_rman_channels + 1) %}
+    allocate channel ch{{ i }} type disk;
+    allocate auxiliary channel aux{{ i }} type disk;
+    {% endfor %}
+
+    duplicate target database
+      for standby
+      from active database
+      dorecover
+      nofilenamecheck
+      spfile
+        parameter_value_convert
+          '{{ dg_primary_db_unique_name }}','{{ dg_standby_db_unique_name }}',
+          '+{{ dg_standby_data_diskgroup }}','+{{ dg_standby_data_diskgroup }}'
+        set db_unique_name='{{ dg_standby_db_unique_name }}'
+        set db_file_name_convert=
+          '+{{ dg_standby_data_diskgroup }}',
+          '+{{ dg_standby_data_diskgroup }}'
+        set log_file_name_convert=
+          '+{{ dg_standby_data_diskgroup }}',
+          '+{{ dg_standby_data_diskgroup }}'
+        set log_archive_dest_1=
+          'LOCATION=USE_DB_RECOVERY_FILE_DEST
+           VALID_FOR=(ALL_LOGFILES,ALL_ROLES)
+           DB_UNIQUE_NAME={{ dg_standby_db_unique_name }}'
+        set log_archive_dest_2=
+          'SERVICE={{ dg_primary_db_unique_name }}
+           {{ dg_redo_transport }}
+           VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE)
+           DB_UNIQUE_NAME={{ dg_primary_db_unique_name }}'
+        set fal_server='{{ dg_primary_db_unique_name }}'
+        set fal_client='{{ dg_standby_db_unique_name }}'
+        set standby_file_management='AUTO'
+        set db_recovery_file_dest='+{{ dg_standby_reco_diskgroup }}'
+        set db_recovery_file_dest_size='{{ oracle_fra_size_gb | default(20) }}G'
+        set audit_file_dest='{{ oracle_base }}/admin/{{ dg_standby_db_unique_name }}/adump'
+        set diagnostic_dest='{{ oracle_base }}'
+      ;
+}

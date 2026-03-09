@@ -1,0 +1,96 @@
+---
+# =============================================================================
+# oradb_config – Configurar PDB autostart
+# Garante que PDB abre automaticamente após startup do CDB
+# =============================================================================
+
+- name: "pdb_autostart | Verificar estado atual do PDB"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT name || ':' || open_mode || ':' || restricted
+    FROM v$pdbs
+    WHERE name = upper('{{ oracle_pdb_name }}');
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _pdb_state
+  changed_when: false
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [pdb_autostart]
+
+- name: "pdb_autostart | Abrir PDB se necessário"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    ALTER PLUGGABLE DATABASE {{ oracle_pdb_name }} OPEN;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _pdb_open
+  changed_when: _pdb_open.rc == 0
+  when: "'READ WRITE' not in _pdb_state.stdout"
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [pdb_autostart]
+
+- name: "pdb_autostart | Salvar estado de abertura automática"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    WHENEVER SQLERROR EXIT SQL.SQLCODE
+    ALTER PLUGGABLE DATABASE {{ oracle_pdb_name }} SAVE STATE;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _pdb_save_state
+  changed_when: _pdb_save_state.rc == 0
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [pdb_autostart]
+
+- name: "pdb_autostart | Verificar estado salvo"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export ORACLE_SID={{ oracle_sid }}{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+    {{ oracle_home }}/bin/sqlplus -s / as sysdba << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT con_name || ':' || state
+    FROM dba_pdb_saved_states
+    WHERE con_name = upper('{{ oracle_pdb_name }}');
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _pdb_saved_state
+  changed_when: false
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [pdb_autostart]
+
+- name: "pdb_autostart | Assert estado salvo como OPEN"
+  ansible.builtin.assert:
+    that: "'OPEN' in _pdb_saved_state.stdout"
+    fail_msg: >
+      PDB {{ oracle_pdb_name }} não está com estado salvo como OPEN.
+      Estado atual: {{ _pdb_saved_state.stdout | trim }}
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [pdb_autostart]
+
+- name: "pdb_autostart | Exibir resultado"
+  ansible.builtin.debug:
+    msg:
+      - "PDB: {{ oracle_pdb_name }}"
+      - "Estado atual: {{ _pdb_state.stdout | trim }}"
+      - "Estado salvo: {{ _pdb_saved_state.stdout | trim }}"
+  run_once: "{{ oracle_deployment_type == 'rac' }}"
+  tags: [pdb_autostart]

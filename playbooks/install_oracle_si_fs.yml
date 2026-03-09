@@ -1,0 +1,84 @@
+---
+# =============================================================================
+# install_oracle_si_fs.yml
+# Provisionamento Oracle Single Instance – Filesystem
+#
+# Pré-requisitos:
+#   - bootstrap.yml executado previamente
+#   - Instaladores Oracle disponíveis em oracle_stage_dir
+#   - Discos adicionais disponíveis para montagem
+#
+# Uso:
+#   ansible-playbook playbooks/install_oracle_si_fs.yml \
+#     -i inventories/dev \
+#     --ask-vault-pass \
+#     --limit dev-db-01
+# =============================================================================
+
+- name: "Oracle SI Filesystem – Provisionamento completo"
+  hosts: oracle_si_fs
+  gather_facts: true
+  become: true
+  become_method: sudo
+
+  vars_files:
+    - "{{ inventory_dir }}/group_vars/vault.yml"
+
+  vars:
+    oracle_storage_type: filesystem
+    oracle_deployment_type: standalone
+
+  pre_tasks:
+    - name: "pre | Verificar conectividade"
+      ansible.builtin.ping:
+      tags: [always]
+
+    - name: "pre | Exibir informações do host"
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "SO: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Memória total: {{ ansible_memtotal_mb }} MB"
+          - "Storage type: {{ oracle_storage_type }}"
+          - "Deployment type: {{ oracle_deployment_type }}"
+      tags: [always]
+
+  roles:
+    - role: orahost_common
+      tags: [orahost_common]
+
+    - role: orahost_os_prereqs
+      tags: [orahost_os_prereqs]
+
+    - role: orahost_directories
+      tags: [orahost_directories]
+
+    - role: orahost_storage
+      tags: [orahost_storage]
+
+    - role: oradb_install
+      tags: [oradb_install]
+
+    - role: oradb_listener
+      tags: [oradb_listener]
+
+    - role: oradb_create
+      tags: [oradb_create]
+
+    - role: oradb_config
+      tags: [oradb_config]
+
+    - role: oradb_healthcheck
+      tags: [oradb_healthcheck]
+
+  post_tasks:
+    - name: "post | Exibir resumo da instalação"
+      ansible.builtin.debug:
+        msg:
+          - "Instalação concluída com sucesso"
+          - "Host: {{ inventory_hostname }}"
+          - "Oracle Version: {{ oracle_version }}"
+          - "Storage Type: {{ oracle_storage_type }}"
+          - "Oracle Base: {{ oracle_base }}"
+          - "Oracle Home: {{ oracle_home | default(oracle_home_base + '/' + oracle_version + '/dbhome_1') }}"
+      tags: [always]

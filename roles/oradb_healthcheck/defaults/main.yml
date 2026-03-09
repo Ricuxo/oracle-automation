@@ -1,0 +1,47 @@
+---
+# =============================================================================
+# oradb_healthcheck – Default Variables
+# Responsabilidade: validações pós-instalação do ambiente Oracle
+# =============================================================================
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+oracle_user: oracle
+oracle_group: oinstall
+grid_user: grid
+
+# ── Diretórios ────────────────────────────────────────────────────────────────
+oracle_home: "{{ oracle_home_base }}/{{ oracle_version }}/dbhome_1"
+oracle_home_base: /u01/app/oracle/product
+oracle_base: /u01/app/oracle
+grid_home: "/u01/app/{{ oracle_version }}/grid"
+
+# ── Versão Oracle ─────────────────────────────────────────────────────────────
+oracle_version: "19.3.0"
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+oracle_deployment_type: standalone
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+oracle_storage_type: filesystem
+
+# ── Identificação do banco ────────────────────────────────────────────────────
+oracle_db_name: ORCL
+oracle_sid: "{{ oracle_db_name }}"
+oracle_db_unique_name: "{{ oracle_db_name }}"
+oracle_pdb_name: PDB1
+
+# ── Arquitetura CDB/PDB ───────────────────────────────────────────────────────
+oracle_enable_pluggable: true
+
+# ── Checks habilitados ────────────────────────────────────────────────────────
+oracle_healthcheck_os: true
+oracle_healthcheck_listener: true
+oracle_healthcheck_database: true
+oracle_healthcheck_asm: true
+oracle_healthcheck_rac: true
+
+# ── Thresholds ────────────────────────────────────────────────────────────────
+oracle_healthcheck_fra_pct_warn: 70
+oracle_healthcheck_fra_pct_critical: 85
+oracle_healthcheck_tbs_pct_warn: 80
+oracle_healthcheck_tbs_pct_critical: 90

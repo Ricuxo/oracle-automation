@@ -1,0 +1,86 @@
+---
+# =============================================================================
+# oradb_config – Configurar autostart via /etc/oratab
+# Utilizado para bancos non-CDB (11g ou 12c+ sem PDB)
+# O caractere Y na terceira coluna do oratab habilita dbstart/dbshut
+# =============================================================================
+
+- name: "oratab_autostart | Verificar se oratab existe"
+  ansible.builtin.stat:
+    path: "{{ oracle_oratab_file }}"
+  register: _oratab_stat
+  tags: [oratab_autostart]
+
+- name: "oratab_autostart | Falhar se oratab não encontrado"
+  ansible.builtin.assert:
+    that: _oratab_stat.stat.exists
+    fail_msg: >
+      Arquivo {{ oracle_oratab_file }} não encontrado em {{ inventory_hostname }}.
+      Verifique se o Oracle foi instalado corretamente.
+  tags: [oratab_autostart]
+
+- name: "oratab_autostart | Verificar entrada atual no oratab"
+  ansible.builtin.shell: |
+    grep -w "^{{ oracle_sid }}" {{ oracle_oratab_file }} || true
+  register: _oratab_entry
+  changed_when: false
+  tags: [oratab_autostart]
+
+- name: "oratab_autostart | Adicionar entrada no oratab se não existir"
+  ansible.builtin.lineinfile:
+    path: "{{ oracle_oratab_file }}"
+    line: "{{ oracle_sid }}:{{ oracle_home }}:{{ oracle_oratab_autostart }}"
+    regexp: "^{{ oracle_sid }}:"
+    state: present
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  register: _oratab_add
+  tags: [oratab_autostart]
+
+- name: "oratab_autostart | Atualizar flag autostart no oratab"
+  ansible.builtin.replace:
+    path: "{{ oracle_oratab_file }}"
+    regexp: "^({{ oracle_sid }}:{{ oracle_home }}:)[YN]$"
+    replace: "\\g<1>{{ oracle_oratab_autostart }}"
+    backup: true
+  register: _oratab_update
+  tags: [oratab_autostart]
+
+- name: "oratab_autostart | Verificar entrada final no oratab"
+  ansible.builtin.shell: |
+    grep -w "^{{ oracle_sid }}" {{ oracle_oratab_file }}
+  register: _oratab_final
+  changed_when: false
+  tags: [oratab_autostart]
+
+- name: "oratab_autostart | Exibir entrada oratab"
+  ansible.builtin.debug:
+    msg: "oratab: {{ _oratab_final.stdout | trim }}"
+  tags: [oratab_autostart]
+
+- name: "oratab_autostart | Verificar se dbstart existe"
+  ansible.builtin.stat:
+    path: "{{ oracle_home }}/bin/dbstart"
+  register: _dbstart_stat
+  tags: [oratab_autostart]
+
+- name: "oratab_autostart | Corrigir referência ORACLE_HOME_LISTNER no dbstart"
+  ansible.builtin.replace:
+    path: "{{ oracle_home }}/bin/dbstart"
+    regexp: "^ORACLE_HOME_LISTNER=.*$"
+    replace: "ORACLE_HOME_LISTNER={{ oracle_home }}"
+    backup: true
+  when: _dbstart_stat.stat.exists
+  register: _dbstart_fix
+  tags: [oratab_autostart]
+
+- name: "oratab_autostart | Corrigir referência ORACLE_HOME_LISTNER no dbshut"
+  ansible.builtin.replace:
+    path: "{{ oracle_home }}/bin/dbshut"
+    regexp: "^ORACLE_HOME_LISTNER=.*$"
+    replace: "ORACLE_HOME_LISTNER={{ oracle_home }}"
+    backup: true
+  register: _dbshut_fix
+  tags: [oratab_autostart]

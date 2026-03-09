@@ -1,0 +1,141 @@
+---
+# =============================================================================
+# oradb_healthcheck – Validações de RAC
+# =============================================================================
+
+- name: "check_rac | Verificar status CRS"
+  ansible.builtin.command: >
+    {{ grid_home }}/bin/crsctl check crs
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _crs_check
+  changed_when: false
+  failed_when: false
+  tags: [check_rac]
+
+- name: "check_rac | Assert CRS está rodando"
+  ansible.builtin.assert:
+    that: _crs_check.rc == 0
+    fail_msg: >
+      CRS não está rodando em {{ inventory_hostname }}.
+      Execute: {{ grid_home }}/bin/crsctl check crs
+  tags: [check_rac]
+
+- name: "check_rac | Verificar status cluster completo"
+  ansible.builtin.command: >
+    {{ grid_home }}/bin/crsctl check cluster -all
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _cluster_check
+  changed_when: false
+  failed_when: false
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Exibir status cluster"
+  ansible.builtin.debug:
+    msg: "{{ _cluster_check.stdout_lines }}"
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Verificar recursos CRS"
+  ansible.builtin.command: >
+    {{ grid_home }}/bin/crsctl stat res -t
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _crs_resources
+  changed_when: false
+  failed_when: false
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Exibir recursos CRS"
+  ansible.builtin.debug:
+    msg: "{{ _crs_resources.stdout_lines }}"
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Verificar recursos OFFLINE"
+  ansible.builtin.shell: |
+    {{ grid_home }}/bin/crsctl stat res -t 2>/dev/null \
+    | grep -i offline | grep -v "ora.proxy" | wc -l
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _crs_offline
+  changed_when: false
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Alertar recursos OFFLINE"
+  ansible.builtin.debug:
+    msg: >
+      ATENÇÃO: {{ _crs_offline.stdout | trim }} recurso(s) CRS OFFLINE
+      no cluster. Verifique com: crsctl stat res -t
+  when: _crs_offline.stdout | trim | int > 0
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Verificar OCR e Voting Disk"
+  ansible.builtin.command: >
+    {{ grid_home }}/bin/ocrcheck
+  become: true
+  become_user: root
+  register: _ocr_check
+  changed_when: false
+  failed_when: false
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Assert OCR íntegro"
+  ansible.builtin.assert:
+    that: "'integrity check succeeded' in _ocr_check.stdout | lower"
+    fail_msg: >
+      OCR com problemas no cluster.
+      Execute: {{ grid_home }}/bin/ocrcheck
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Verificar Voting Disk"
+  ansible.builtin.command: >
+    {{ grid_home }}/bin/crsctl query css votedisk
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _votedisk_check
+  changed_when: false
+  failed_when: false
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Exibir Voting Disk"
+  ansible.builtin.debug:
+    msg: "{{ _votedisk_check.stdout_lines }}"
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Verificar status instâncias RAC"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/srvctl status database \
+      -db {{ oracle_db_unique_name }} -verbose
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _rac_instances
+  changed_when: false
+  failed_when: false
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Exibir status instâncias RAC"
+  ansible.builtin.debug:
+    msg: "{{ _rac_instances.stdout_lines }}"
+  run_once: true
+  tags: [check_rac]
+
+- name: "check_rac | Exibir resumo RAC"
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "CRS: {{ 'OK' if _crs_check.rc == 0 else 'FALHOU' }}"
+      - "OCR: {{ 'OK' if 'integrity check succeeded' in _ocr_check.stdout | lower else 'FALHOU' }}"
+      - "Recursos OFFLINE: {{ _crs_offline.stdout | trim }}"
+  tags: [check_rac]

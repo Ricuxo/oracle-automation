@@ -1,0 +1,35 @@
+---
+# =============================================================================
+# orahost_directories – Default Variables
+# Responsabilidade: criação de diretórios base do Oracle
+# =============================================================================
+
+# ── Versão Oracle ─────────────────────────────────────────────────────────────
+oracle_version: "19.3.0"
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+oracle_user: oracle
+oracle_group: oinstall
+grid_user: grid
+
+# ── Diretórios Oracle ─────────────────────────────────────────────────────────
+oracle_base: /u01/app/oracle
+oracle_inventory_location: /u01/app/oraInventory
+oracle_home_base: /u01/app/oracle/product
+
+# ── Diretórios Grid ───────────────────────────────────────────────────────────
+grid_base: /u01/app/grid
+grid_home: "/u01/app/{{ oracle_version }}/grid"
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+# Valores válidos: filesystem | asm
+oracle_storage_type: filesystem
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+# Valores válidos: standalone | rac
+oracle_deployment_type: standalone
+
+# ── Diretórios de dados (filesystem only) ────────────────────────────────────
+oracle_data_dir: /u02/oradata
+oracle_fra_dir: /u03/fra
+oracle_redo_dir: /u04/redo

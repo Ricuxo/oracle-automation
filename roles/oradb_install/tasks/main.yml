@@ -1,0 +1,58 @@
+---
+# =============================================================================
+# oradb_install – Tasks
+# Responsabilidade: instalação do software RDBMS Oracle
+# =============================================================================
+
+- name: "oradb_install | Verificar se instalador existe"
+  ansible.builtin.stat:
+    path: "{{ rdbms_installer_path }}"
+  register: _rdbms_installer_stat
+  tags: [oradb_install]
+
+- name: "oradb_install | Falhar se instalador não encontrado"
+  ansible.builtin.assert:
+    that: _rdbms_installer_stat.stat.exists
+    fail_msg: >
+      Instalador RDBMS não encontrado em {{ rdbms_installer_path }}.
+      Copie o arquivo {{ rdbms_installer_zip }} para {{ oracle_stage_dir }}.
+  tags: [oradb_install]
+
+- name: "oradb_install | Verificar se RDBMS já está instalado"
+  ansible.builtin.stat:
+    path: "{{ oracle_home }}/bin/oracle"
+  register: _rdbms_installed
+  tags: [oradb_install]
+
+- name: "oradb_install | Definir fato rdbms_already_installed"
+  ansible.builtin.set_fact:
+    rdbms_already_installed: "{{ _rdbms_installed.stat.exists }}"
+  tags: [oradb_install]
+
+- name: "oradb_install | Exibir status da instalação"
+  ansible.builtin.debug:
+    msg: >
+      RDBMS:
+      {{ 'já instalado em ' + oracle_home if rdbms_already_installed
+         else 'não instalado, iniciando instalação' }}
+  tags: [oradb_install]
+
+- name: "oradb_install | Descompactar instalador"
+  ansible.builtin.import_tasks: stage.yml
+  when: not rdbms_already_installed
+  tags: [oradb_install, stage]
+
+- name: "oradb_install | Gerar response file"
+  ansible.builtin.import_tasks: response_file.yml
+  when: not rdbms_already_installed
+  tags: [oradb_install, response_file]
+
+- name: "oradb_install | Executar instalação"
+  ansible.builtin.import_tasks: install.yml
+  when: not rdbms_already_installed
+  tags: [oradb_install, install]
+
+- name: "oradb_install | Executar root scripts"
+  ansible.builtin.import_tasks: root_scripts.yml
+  when: not rdbms_already_installed
+  tags: [oradb_install, root_scripts]

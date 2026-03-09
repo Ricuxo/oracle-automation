@@ -1,2 +1,15 @@
 ---
 # handlers file for roles/os_prereqs
+
+# =============================================================================
+# orahost_os_prereqs – Handlers
+# =============================================================================
+
+- name: activate_tuned_oracle
+  ansible.builtin.command: tuned-adm profile oracle
+  changed_when: true
+
+- name: restart_chronyd
+  ansible.builtin.systemd:
+    name: chronyd
+    state: restarted

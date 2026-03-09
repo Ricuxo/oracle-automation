@@ -1,0 +1,70 @@
+# ~/.bash_profile
+# Gerenciado pelo Ansible – orahost_directories
+# Alterações manuais serão sobrescritas
+
+# ── Limites de usuário ────────────────────────────────────────────────────────
+if [ $USER = "grid" ]; then
+  if [ $SHELL = "/bin/ksh" ]; then
+    ulimit -p 16384
+    ulimit -n 65536
+  else
+    ulimit -u 16384 -n 65536
+  fi
+fi
+
+# ── Prompt ────────────────────────────────────────────────────────────────────
+PS1="`hostname` {\$ORACLE_SID} \$PWD > "
+
+# ── PATH base ─────────────────────────────────────────────────────────────────
+echo $PATH | /bin/grep -q "$HOME/bin" ||
+{
+        PATH=$HOME/bin:${PATH:-/usr/bin:.}
+        export PATH
+}
+
+# ── Terminal ──────────────────────────────────────────────────────────────────
+if [ -t 0 ]; then
+  stty intr
+fi
+
+set -o vi
+
+export COLUMNS=300
+export LINES=100
+export EDITOR=vi
+
+umask 022
+
+# ── Variáveis Oracle Grid ─────────────────────────────────────────────────────
+export ORACLE_SID=+ASM{% if oracle_deployment_type == 'rac' %}{{ oracle_rac_node_number | default(1) }}{% endif %}
+
+export ORACLE_BASE={{ grid_base }}
+export ORACLE_HOME={{ grid_home }}
+export GRID_HOME={{ grid_home }}
+export TNS_ADMIN=$ORACLE_HOME/network/admin
+export ORA_NLS33=$ORACLE_HOME/ocommon/nls/admin/data
+export ORACLE_TERM=vt100
+export SQLPATH=~/scripts
+
+# ── Variáveis de ambiente ─────────────────────────────────────────────────────
+export PATH=$PATH:$ORACLE_HOME/bin:/usr/sbin:/usr/java/bin:/usr/bin:/usr/ucb:/etc:/sbin:$ORACLE_HOME/network/lib:$ORACLE_HOME/lib:$ORACLE_HOME/network/admin:$HOME/bin:/usr/bin/X11:$ORACLE_HOME/OPatch
+export NLS_LANG='AMERICAN_AMERICA.AL32UTF8'
+export NLS_DATE_FORMAT="DD-MON-YYYY HH24:MI:SS"
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:/usr/lib
+export LIBPATH=$ORACLE_HOME/lib:lib:/usr/lib
+export SHLIB_PATH=$ORACLE_HOME/lib
+export CLASSPATH=$ORACLE_HOME/JRE:$ORACLE_HOME/jlib:$ORACLE_HOME/rdbms/jlib
+export CLASSPATH=$CLASSPATH:$ORACLE_HOME/network/jlib
+export TMPDIR={{ grid_base }}/TMPDIR
+export TEMP={{ grid_base }}/TEMP
+
+# ── History ───────────────────────────────────────────────────────────────────
+export HISTTIMEFORMAT="%F %T "
+export HISTSIZE=10000
+
+# ── Informações iniciais ──────────────────────────────────────────────────────
+ps -ef | grep pmon
+stty erase ^?
+
+# ── Aliases ───────────────────────────────────────────────────────────────────
+. ~/.bash_aliases

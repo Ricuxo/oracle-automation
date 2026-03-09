@@ -1,0 +1,69 @@
+---
+# =============================================================================
+# oragrid_install – Tasks
+# Responsabilidade: instalação do Grid Infrastructure
+# =============================================================================
+
+- name: "oragrid_install | Verificar se role é aplicável"
+  ansible.builtin.assert:
+    that: oracle_storage_type == 'asm'
+    fail_msg: >
+      oragrid_install é exclusiva para oracle_storage_type = asm.
+  tags: [oragrid_install]
+
+- name: "oragrid_install | Verificar se instalador existe"
+  ansible.builtin.stat:
+    path: "{{ grid_installer_path }}"
+  register: _grid_installer_stat
+  tags: [oragrid_install]
+
+- name: "oragrid_install | Falhar se instalador não encontrado"
+  ansible.builtin.assert:
+    that: _grid_installer_stat.stat.exists
+    fail_msg: >
+      Instalador Grid não encontrado em {{ grid_installer_path }}.
+      Copie o arquivo {{ grid_installer_zip }} para {{ oracle_stage_dir }}.
+  tags: [oragrid_install]
+
+- name: "oragrid_install | Verificar se Grid já está instalado"
+  ansible.builtin.stat:
+    path: "{{ grid_home }}/bin/gridSetup.sh"
+  register: _grid_installed
+  tags: [oragrid_install]
+
+- name: "oragrid_install | Definir fato grid_already_installed"
+  ansible.builtin.set_fact:
+    grid_already_installed: "{{ _grid_installed.stat.exists }}"
+  tags: [oragrid_install]
+
+- name: "oragrid_install | Exibir status da instalação"
+  ansible.builtin.debug:
+    msg: >
+      Grid Infrastructure:
+      {{ 'já instalado em ' + grid_home if grid_already_installed
+         else 'não instalado, iniciando instalação' }}
+  tags: [oragrid_install]
+
+- name: "oragrid_install | Descompactar instalador"
+  ansible.builtin.import_tasks: stage.yml
+  when: not grid_already_installed
+  tags: [oragrid_install, stage]
+
+- name: "oragrid_install | Gerar response file"
+  ansible.builtin.import_tasks: response_file.yml
+  when: not grid_already_installed
+  tags: [oragrid_install, response_file]
+
+- name: "oragrid_install | Executar instalação"
+  ansible.builtin.import_tasks: install.yml
+  when: not grid_already_installed
+  tags: [oragrid_install, install]
+
+- name: "oragrid_install | Executar root scripts"
+  ansible.builtin.import_tasks: root_scripts.yml
+  when: not grid_already_installed
+  tags: [oragrid_install, root_scripts]
+
+- name: "oragrid_install | Validar instalação"
+  ansible.builtin.import_tasks: validate.yml
+  tags: [oragrid_install, validate]

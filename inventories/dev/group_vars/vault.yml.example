@@ -1,0 +1,20 @@
+---
+# =============================================================================
+# vault.yml.example – Exemplo de estrutura do vault
+# Copie para vault.yml e preencha com os valores reais
+#
+# cp vault.yml.example vault.yml
+# ansible-vault encrypt vault.yml
+# =============================================================================
+
+# ── Bootstrap ─────────────────────────────────────────────────────────────────
+vault_bootstrap_ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2E... ansible@controller"
+
+# ── Senhas Oracle ─────────────────────────────────────────────────────────────
+vault_oracle_sys_password: "CHANGE_ME"
+vault_oracle_system_password: "CHANGE_ME"
+vault_oracle_pdbadmin_password: "CHANGE_ME"
+vault_oracle_asm_monitor_password: "CHANGE_ME"
+
+# ── Senha bootstrap user ──────────────────────────────────────────────────────
+vault_bootstrap_user_password: "CHANGE_ME"

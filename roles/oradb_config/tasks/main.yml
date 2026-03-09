@@ -1,0 +1,57 @@
+---
+# =============================================================================
+# oradb_config – Tasks
+# Responsabilidade: configuração pós-criação do banco
+# =============================================================================
+
+- name: "oradb_config | Verificar se banco está rodando"
+  ansible.builtin.shell: |
+    ps -ef | grep pmon | grep -i {{ oracle_sid }} | grep -v grep
+  register: _pmon_running
+  changed_when: false
+  failed_when: _pmon_running.rc != 0
+  tags: [oradb_config]
+
+- name: "oradb_config | Configurar archivelog"
+  ansible.builtin.import_tasks: archivelog.yml
+  when: oracle_enable_archivelog | bool
+  tags: [oradb_config, archivelog]
+
+- name: "oradb_config | Configurar FRA"
+  ansible.builtin.import_tasks: fra.yml
+  tags: [oradb_config, fra]
+
+- name: "oradb_config | Aplicar parâmetros de inicialização"
+  ansible.builtin.import_tasks: parameters.yml
+  when: oracle_db_parameters | length > 0
+  tags: [oradb_config, parameters]
+
+- name: "oradb_config | Configurar PDB autostart (CDB)"
+  ansible.builtin.import_tasks: pdb_autostart.yml
+  when:
+    - oracle_pdb_autostart | bool
+    - oracle_enable_pluggable | bool
+  tags: [oradb_config, pdb, autostart]
+
+- name: "oradb_config | Configurar autostart via oratab (non-CDB)"
+  ansible.builtin.import_tasks: oratab_autostart.yml
+  when:
+    - oracle_pdb_autostart | bool
+    - not oracle_enable_pluggable | bool
+  tags: [oradb_config, oratab, autostart]
+
+- name: "oradb_config | Configurar systemd para banco (filesystem standalone)"
+  ansible.builtin.import_tasks: systemd.yml
+  when:
+    - oracle_storage_type == 'filesystem'
+    - oracle_deployment_type == 'standalone'
+    - oracle_db_systemd | bool
+  tags: [oradb_config, systemd]
+
+- name: "oradb_config | Registrar banco no Oracle Restart (ASM standalone)"
+  ansible.builtin.import_tasks: oracle_restart.yml
+  when:
+    - oracle_storage_type == 'asm'
+    - oracle_deployment_type == 'standalone'
+    - oracle_restart_register | bool
+  tags: [oradb_config, oracle_restart]

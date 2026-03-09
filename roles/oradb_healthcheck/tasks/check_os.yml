@@ -1,0 +1,69 @@
+---
+# =============================================================================
+# oradb_healthcheck – Validações de SO
+# =============================================================================
+
+- name: "check_os | Verificar THP desabilitado"
+  ansible.builtin.shell: |
+    cat /sys/kernel/mm/transparent_hugepage/enabled
+  register: _thp_check
+  changed_when: false
+  tags: [check_os]
+
+- name: "check_os | Assert THP desabilitado"
+  ansible.builtin.assert:
+    that: "'[never]' in _thp_check.stdout"
+    fail_msg: "THP não está desabilitado em {{ inventory_hostname }}"
+  tags: [check_os]
+
+- name: "check_os | Verificar limites do usuário oracle"
+  ansible.builtin.shell: |
+    su - {{ oracle_user }} -c "ulimit -a" 2>/dev/null
+  register: _ulimit_check
+  changed_when: false
+  tags: [check_os]
+
+- name: "check_os | Verificar sincronização NTP"
+  ansible.builtin.command: chronyc tracking
+  register: _ntp_check
+  changed_when: false
+  failed_when: false
+  tags: [check_os]
+
+- name: "check_os | Assert NTP sincronizado"
+  ansible.builtin.assert:
+    that: "'Not synchronised' not in _ntp_check.stdout"
+    fail_msg: "NTP não está sincronizado em {{ inventory_hostname }}"
+  tags: [check_os]
+
+- name: "check_os | Verificar espaço em disco"
+  ansible.builtin.shell: |
+    df -hP {{ oracle_base }} {{ oracle_home }}
+  register: _df_check
+  changed_when: false
+  tags: [check_os]
+
+- name: "check_os | Verificar SELinux"
+  ansible.builtin.command: getenforce
+  register: _selinux_check
+  changed_when: false
+  tags: [check_os]
+
+- name: "check_os | Verificar processo pmon"
+  ansible.builtin.shell: |
+    ps -ef | grep pmon | grep -v grep
+  register: _pmon_check
+  changed_when: false
+  failed_when: false
+  tags: [check_os]
+
+- name: "check_os | Exibir resumo SO"
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "THP: {{ 'OK' if '[never]' in _thp_check.stdout else 'FALHOU' }}"
+      - "NTP: {{ 'OK' if 'Not synchronised' not in _ntp_check.stdout else 'FALHOU' }}"
+      - "SELinux: {{ _selinux_check.stdout | trim }}"
+      - "Instâncias ativas: {{ _pmon_check.stdout_lines | length }}"
+      - "Disco: {{ _df_check.stdout_lines }}"
+  tags: [check_os]

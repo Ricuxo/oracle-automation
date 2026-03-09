@@ -1,0 +1,21 @@
+---
+# =============================================================================
+# oradb_listener – Handlers
+# =============================================================================
+
+- name: reload_listener
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    {{ oracle_home }}/bin/lsnrctl reload {{ oracle_listener_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  changed_when: false
+
+- name: systemd_daemon_reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: enable_listener_service
+  ansible.builtin.systemd:
+    name: "oracle-listener-{{ oracle_listener_name | lower }}"
+    enabled: true

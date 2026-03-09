@@ -1,0 +1,140 @@
+---
+# =============================================================================
+# oradb_healthcheck – Validações de ASM
+# =============================================================================
+
+- name: "check_asm | Verificar processo ASM pmon"
+  ansible.builtin.shell: |
+    ps -ef | grep pmon | grep -i asm | grep -v grep
+  register: _asm_pmon_check
+  changed_when: false
+  failed_when: false
+  tags: [check_asm]
+
+- name: "check_asm | Assert ASM pmon está rodando"
+  ansible.builtin.assert:
+    that: _asm_pmon_check.rc == 0
+    fail_msg: >
+      Processo ASM pmon não encontrado em {{ inventory_hostname }}.
+      Verifique se o Grid Infrastructure está rodando.
+  tags: [check_asm]
+
+- name: "check_asm | Verificar status ASM via srvctl"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/srvctl status asm
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _asm_srvctl_check
+  changed_when: false
+  failed_when: false
+  tags: [check_asm]
+
+- name: "check_asm | Assert ASM está rodando via srvctl"
+  ansible.builtin.assert:
+    that: "'is running' in _asm_srvctl_check.stdout"
+    fail_msg: >
+      ASM não está rodando em {{ inventory_hostname }}.
+      Status: {{ _asm_srvctl_check.stdout | trim }}
+  tags: [check_asm]
+
+- name: "check_asm | Verificar diskgroups montados"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    export ORACLE_SID=+ASM{{ oracle_rac_node_number | default('') }}
+    {{ grid_home }}/bin/sqlplus -s / as sysasm << 'SQLEOF'
+    set linesize 120 pagesize 50
+    col name format a20
+    col state format a12
+    col type format a10
+    col total_mb format 999999
+    col free_mb format 999999
+    col usable_file_mb format 999999
+    SELECT name, state, type, total_mb, free_mb, usable_file_mb
+    FROM v$asm_diskgroup
+    ORDER BY name;
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _asm_diskgroups_check
+  changed_when: false
+  tags: [check_asm]
+
+- name: "check_asm | Exibir diskgroups"
+  ansible.builtin.debug:
+    msg: "{{ _asm_diskgroups_check.stdout_lines }}"
+  tags: [check_asm]
+
+- name: "check_asm | Verificar discos com erros"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    export ORACLE_SID=+ASM{{ oracle_rac_node_number | default('') }}
+    {{ grid_home }}/bin/sqlplus -s / as sysasm << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT count(*) FROM v$asm_disk
+    WHERE mode_status != 'ONLINE' OR state != 'NORMAL';
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _asm_disk_errors
+  changed_when: false
+  tags: [check_asm]
+
+- name: "check_asm | Assert sem discos com erro"
+  ansible.builtin.assert:
+    that: _asm_disk_errors.stdout | trim | int == 0
+    fail_msg: >
+      {{ _asm_disk_errors.stdout | trim }} disco(s) ASM com problema
+      em {{ inventory_hostname }}.
+      Verifique v$asm_disk para detalhes.
+  tags: [check_asm]
+
+- name: "check_asm | Verificar uso FRA via ASM"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    export ORACLE_SID=+ASM{{ oracle_rac_node_number | default('') }}
+    {{ grid_home }}/bin/sqlplus -s / as sysasm << 'SQLEOF'
+    set heading off feedback off pagesize 0
+    SELECT round((1-(usable_file_mb/total_mb))*100)
+    FROM v$asm_diskgroup
+    WHERE name = upper('{{ oracle_asm_reco_diskgroup | default("RECO") }}');
+    exit;
+    SQLEOF
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _asm_reco_pct
+  changed_when: false
+  failed_when: false
+  tags: [check_asm]
+
+- name: "check_asm | Alertar uso FRA"
+  ansible.builtin.debug:
+    msg: >
+      ATENÇÃO: Diskgroup {{ oracle_asm_reco_diskgroup | default('RECO') }}
+      com {{ _asm_reco_pct.stdout | trim }}% de uso em {{ inventory_hostname }}.
+  when:
+    - _asm_reco_pct.stdout | trim | int >= oracle_healthcheck_fra_pct_warn
+    - _asm_reco_pct.stdout | trim | int < oracle_healthcheck_fra_pct_critical
+  tags: [check_asm]
+
+- name: "check_asm | Falhar uso crítico FRA"
+  ansible.builtin.assert:
+    that: _asm_reco_pct.stdout | trim | int < oracle_healthcheck_fra_pct_critical
+    fail_msg: >
+      CRÍTICO: Diskgroup {{ oracle_asm_reco_diskgroup | default('RECO') }}
+      com {{ _asm_reco_pct.stdout | trim }}% de uso em {{ inventory_hostname }}.
+      Threshold crítico: {{ oracle_healthcheck_fra_pct_critical }}%
+  when: _asm_reco_pct.stdout | trim | length > 0
+  tags: [check_asm]
+
+- name: "check_asm | Exibir resumo ASM"
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "ASM pmon: {{ 'OK' if _asm_pmon_check.rc == 0 else 'FALHOU' }}"
+      - "ASM srvctl: {{ 'OK' if 'is running' in _asm_srvctl_check.stdout else 'FALHOU' }}"
+      - "Discos com erro: {{ _asm_disk_errors.stdout | trim }}"
+      - "Uso RECO: {{ _asm_reco_pct.stdout | trim }}%"
+  tags: [check_asm]

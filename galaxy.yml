@@ -1,0 +1,37 @@
+---
+namespace: henrique
+name: oracle_platform
+version: 2.1.0
+readme: README.md
+authors:
+  - Henrique <henrique@example.com>
+description: >
+  Enterprise-grade Ansible Collection for provisioning, patching, and operating
+  Oracle Database environments (Single Instance and RAC) on Linux.
+  Supports ASM and filesystem storage layouts, Data Guard, and CI/CD integration.
+license:
+  - GPL-2.0-or-later
+license_file: LICENSE
+tags:
+  - oracle
+  - database
+  - rac
+  - asm
+  - dataguard
+  - patching
+  - infrastructure
+repository: https://github.com/henrique/oracle_platform
+documentation: https://henrique.github.io/oracle_platform
+homepage: https://github.com/henrique/oracle_platform
+issues: https://github.com/henrique/oracle_platform/issues
+build_ignore:
+  - "*.tar.gz"
+  - ".git"
+  - ".github"
+  - "molecule"
+  - "tests"
+  - ".cache"
+  - "*.retry"
+dependencies:
+  community.general: ">=7.0.0"
+  ansible.posix: ">=1.5.0"

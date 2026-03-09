@@ -1,0 +1,29 @@
+---
+# =============================================================================
+# orahost_os_prereqs – Firewall
+# Abre portas necessárias para Oracle no firewalld
+# =============================================================================
+
+- name: "firewall | Garantir que firewalld está instalado"
+  ansible.builtin.package:
+    name: firewalld
+    state: present
+  tags: [firewall]
+
+- name: "firewall | Garantir que firewalld está habilitado e rodando"
+  ansible.builtin.systemd:
+    name: firewalld
+    enabled: true
+    state: started
+  tags: [firewall]
+
+- name: "firewall | Abrir portas Oracle"
+  ansible.posix.firewalld:
+    port: "{{ item.port }}/{{ item.proto }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{{ oracle_firewall_ports }}"
+  loop_control:
+    label: "{{ item.port }}/{{ item.proto }}"
+  tags: [firewall]

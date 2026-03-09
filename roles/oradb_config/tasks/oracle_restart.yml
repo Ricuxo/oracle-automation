@@ -1,0 +1,98 @@
+---
+# =============================================================================
+# oradb_config – Registrar banco no Oracle Restart
+# Utilizado apenas em ASM standalone
+# Oracle Restart gerencia startup/shutdown automático via srvctl
+# =============================================================================
+
+- name: "oracle_restart | Verificar se Oracle Restart está ativo"
+  ansible.builtin.command: >
+    {{ grid_home }}/bin/crsctl check has
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _has_check
+  changed_when: false
+  failed_when: false
+  tags: [oracle_restart]
+
+- name: "oracle_restart | Falhar se Oracle Restart não está ativo"
+  ansible.builtin.assert:
+    that: "'CRS-4638' in _has_check.stdout or 'online' in _has_check.stdout"
+    fail_msg: >
+      Oracle Restart não está ativo em {{ inventory_hostname }}.
+      Execute a role oragrid_install antes de oradb_config.
+  tags: [oracle_restart]
+
+- name: "oracle_restart | Verificar se banco já está registrado"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/srvctl config database -db {{ oracle_db_unique_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _srvctl_config
+  changed_when: false
+  failed_when: false
+  tags: [oracle_restart]
+
+- name: "oracle_restart | Registrar banco no Oracle Restart"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/srvctl add database \
+      -db {{ oracle_db_unique_name }} \
+      -oraclehome {{ oracle_home }} \
+      -dbtype SINGLE \
+      -dbname {{ oracle_db_name }} \
+      -instance {{ oracle_sid }} \
+      -startoption OPEN \
+      -stopoption IMMEDIATE \
+      -policy AUTOMATIC
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _srvctl_add
+  changed_when: _srvctl_add.rc == 0
+  when: _srvctl_config.rc != 0
+  tags: [oracle_restart]
+
+- name: "oracle_restart | Registrar PDB no Oracle Restart"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/srvctl add pdb \
+      -db {{ oracle_db_unique_name }} \
+      -pdb {{ oracle_pdb_name }} \
+      -startoption OPEN \
+      -stopoption IMMEDIATE
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _srvctl_add_pdb
+  changed_when: _srvctl_add_pdb.rc == 0
+  when:
+    - _srvctl_config.rc != 0
+    - oracle_enable_pluggable | bool
+  tags: [oracle_restart]
+
+- name: "oracle_restart | Habilitar banco no Oracle Restart"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/srvctl enable database \
+      -db {{ oracle_db_unique_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _srvctl_enable
+  changed_when: _srvctl_enable.rc == 0
+  tags: [oracle_restart]
+
+- name: "oracle_restart | Verificar configuração registrada"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/srvctl config database \
+      -db {{ oracle_db_unique_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _srvctl_final
+  changed_when: false
+  tags: [oracle_restart]
+
+- name: "oracle_restart | Exibir configuração Oracle Restart"
+  ansible.builtin.debug:
+    msg: "{{ _srvctl_final.stdout_lines }}"
+  tags: [oracle_restart]

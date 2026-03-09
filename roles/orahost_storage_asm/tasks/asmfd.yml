@@ -1,0 +1,77 @@
+---
+# =============================================================================
+# orahost_storage_asm – ASMFD (ASM Filter Driver)
+# Recomendado pela Oracle para 19c+
+# Mais seguro que ASMLib, evita overwrites acidentais
+# =============================================================================
+
+- name: "asmfd | Verificar se ORACLE_HOME do Grid está disponível"
+  ansible.builtin.stat:
+    path: "{{ grid_home }}/bin/asmcmd"
+  register: _asmcmd_stat
+  tags: [asmfd]
+
+- name: "asmfd | Falhar se Grid não estiver instalado"
+  ansible.builtin.assert:
+    that: _asmcmd_stat.stat.exists
+    fail_msg: >
+      ASMFD requer Grid Infrastructure instalado em {{ grid_home }}.
+      Execute a role oragrid_install antes de orahost_storage_asm com asmfd.
+  tags: [asmfd]
+
+- name: "asmfd | Configurar ASMFD via asmcmd afd_configure"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    export ORACLE_BASE={{ grid_base }}
+    {{ grid_home }}/bin/asmcmd afd_configure
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _afd_configure
+  changed_when: "'AFD configuration was successful' in _afd_configure.stdout"
+  failed_when:
+    - _afd_configure.rc != 0
+    - "'already configured' not in _afd_configure.stdout"
+  tags: [asmfd]
+
+- name: "asmfd | Verificar se disco já possui label ASMFD"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/asmcmd afd_lslbl {{ item.device }}
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _afd_lslbl
+  changed_when: false
+  failed_when: false
+  loop: "{{ oracle_asm_disks }}"
+  loop_control:
+    label: "{{ item.label }}"
+  tags: [asmfd]
+
+- name: "asmfd | Criar label ASMFD nos discos"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/asmcmd afd_label {{ item.item.label }} {{ item.item.device }} --init
+  become: true
+  become_user: "{{ grid_user }}"
+  when: item.item.label not in item.stdout
+  loop: "{{ _afd_lslbl.results }}"
+  loop_control:
+    label: "{{ item.item.label }}"
+  register: _afd_label
+  changed_when: _afd_label.rc == 0
+  tags: [asmfd]
+
+- name: "asmfd | Listar labels ASMFD configurados"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ grid_home }}
+    {{ grid_home }}/bin/asmcmd afd_lslbl
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _afd_list
+  changed_when: false
+  tags: [asmfd]
+
+- name: "asmfd | Exibir labels configurados"
+  ansible.builtin.debug:
+    msg: "Discos ASMFD configurados: {{ _afd_list.stdout_lines }}"
+  tags: [asmfd]

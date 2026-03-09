@@ -1,0 +1,65 @@
+---
+# =============================================================================
+# oradb_dataguard – Configurar TNS em ambos os hosts
+# Executado em todos os hosts do play
+# =============================================================================
+
+- name: "configure_tns | Gerar tnsnames.ora com entradas Data Guard"
+  ansible.builtin.template:
+    src: dg_tnsnames.ora.j2
+    dest: "{{ dg_tns_admin }}/tnsnames.ora"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0640"
+    backup: true
+  tags: [configure_tns]
+
+- name: "configure_tns | Verificar conectividade TNS ao primary"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export TNS_ADMIN={{ dg_tns_admin }}
+    {{ oracle_home }}/bin/tnsping {{ dg_primary_db_unique_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _tnsping_primary
+  changed_when: false
+  failed_when: false
+  tags: [configure_tns]
+
+- name: "configure_tns | Assert TNS primary acessível"
+  ansible.builtin.assert:
+    that: "'OK' in _tnsping_primary.stdout"
+    fail_msg: >
+      TNSping falhou para primary {{ dg_primary_db_unique_name }}
+      em {{ inventory_hostname }}.
+      Verifique listener e tnsnames.ora.
+  tags: [configure_tns]
+
+- name: "configure_tns | Verificar conectividade TNS ao standby"
+  ansible.builtin.shell: |
+    export ORACLE_HOME={{ oracle_home }}
+    export TNS_ADMIN={{ dg_tns_admin }}
+    {{ oracle_home }}/bin/tnsping {{ dg_standby_db_unique_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: _tnsping_standby
+  changed_when: false
+  failed_when: false
+  tags: [configure_tns]
+
+- name: "configure_tns | Assert TNS standby acessível"
+  ansible.builtin.assert:
+    that: "'OK' in _tnsping_standby.stdout"
+    fail_msg: >
+      TNSping falhou para standby {{ dg_standby_db_unique_name }}
+      em {{ inventory_hostname }}.
+      Verifique listener e tnsnames.ora.
+  tags: [configure_tns]
+
+- name: "configure_tns | Exibir resultado TNS"
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "TNS Primary {{ dg_primary_db_unique_name }}: {{ 'OK' if 'OK' in _tnsping_primary.stdout else 'FALHOU' }}"
+      - "TNS Standby {{ dg_standby_db_unique_name }}: {{ 'OK' if 'OK' in _tnsping_standby.stdout else 'FALHOU' }}"
+  tags: [configure_tns]

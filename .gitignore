@@ -1,0 +1,57 @@
+# =============================================================================
+# .gitignore – oracle-automation
+# =============================================================================
+
+# ── Vault – NUNCA commitar arquivos de vault sem criptografia ─────────────────
+**/group_vars/vault.yml
+**/host_vars/vault.yml
+*.vault
+.vault_pass
+.vault_password
+vault_password_file
+
+# ── Arquivos de retry do Ansible ──────────────────────────────────────────────
+*.retry
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+/logs/
+
+# ── Cache Ansible ─────────────────────────────────────────────────────────────
+.cache/
+fact_cache/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# ── Arquivos temporários ──────────────────────────────────────────────────────
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# ── Instaladores Oracle – nunca commitar binários ────────────────────────────
+files/oracle/*.zip
+files/oracle/*.tar
+files/oracle/*.rpm
+
+# ── SSH keys ──────────────────────────────────────────────────────────────────
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# ── Molecule ──────────────────────────────────────────────────────────────────
+molecule/**/molecule.yml.bak
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.code-workspace
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

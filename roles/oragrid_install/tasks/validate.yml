@@ -1,0 +1,79 @@
+---
+# =============================================================================
+# oragrid_install – Validar instalação
+# =============================================================================
+
+- name: "validate | Verificar status do CRS"
+  ansible.builtin.command: "{{ grid_home }}/bin/crsctl check crs"
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _crs_check
+  changed_when: false
+  failed_when: false
+  tags: [validate]
+
+- name: "validate | Exibir status CRS"
+  ansible.builtin.debug:
+    msg: "{{ _crs_check.stdout_lines }}"
+  tags: [validate]
+
+- name: "validate | Verificar status do cluster (RAC)"
+  ansible.builtin.command: "{{ grid_home }}/bin/crsctl check cluster -all"
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _cluster_check
+  changed_when: false
+  failed_when: false
+  run_once: true
+  when: oracle_deployment_type == 'rac'
+  tags: [validate, rac]
+
+- name: "validate | Exibir status cluster (RAC)"
+  ansible.builtin.debug:
+    msg: "{{ _cluster_check.stdout_lines }}"
+  when: oracle_deployment_type == 'rac'
+  run_once: true
+  tags: [validate, rac]
+
+- name: "validate | Verificar status ASM"
+  ansible.builtin.command: >
+    {{ grid_home }}/bin/srvctl status asm
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _asm_status
+  changed_when: false
+  failed_when: false
+  tags: [validate]
+
+- name: "validate | Assert ASM está rodando"
+  ansible.builtin.assert:
+    that: "'is running' in _asm_status.stdout"
+    fail_msg: >
+      ASM não está rodando em {{ inventory_hostname }}.
+      Verifique os logs em {{ grid_base }}/diag/asm.
+  tags: [validate]
+
+- name: "validate | Verificar listener Grid"
+  ansible.builtin.command: >
+    {{ grid_home }}/bin/lsnrctl status
+  become: true
+  become_user: "{{ grid_user }}"
+  register: _lsnr_grid
+  changed_when: false
+  failed_when: false
+  tags: [validate]
+
+- name: "validate | Exibir status listener Grid"
+  ansible.builtin.debug:
+    msg: "{{ _lsnr_grid.stdout_lines }}"
+  tags: [validate]
+
+- name: "validate | Exibir resumo da validação Grid"
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Grid Home: {{ grid_home }}"
+      - "CRS: {{ 'OK' if _crs_check.rc == 0 else 'FALHOU' }}"
+      - "ASM: {{ 'OK' if 'is running' in _asm_status.stdout else 'FALHOU' }}"
+      - "Listener: {{ 'OK' if 'TNS-12541' not in _lsnr_grid.stdout else 'FALHOU' }}"
+  tags: [validate]

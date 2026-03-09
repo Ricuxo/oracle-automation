@@ -1,0 +1,25 @@
+# /etc/systemd/system/oracle-listener-{{ oracle_listener_name | lower }}.service
+# Gerenciado pelo Ansible – oradb_listener
+# Gerado em: {{ ansible_date_time.iso8601 }}
+
+[Unit]
+Description=Oracle Listener {{ oracle_listener_name }}
+After=network.target
+
+[Service]
+Type=forking
+User={{ oracle_user }}
+Group={{ oracle_group }}
+Environment="ORACLE_HOME={{ oracle_home }}"
+Environment="ORACLE_BASE={{ oracle_base }}"
+Environment="PATH={{ oracle_home }}/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart={{ oracle_home }}/bin/lsnrctl start {{ oracle_listener_name }}
+ExecStop={{ oracle_home }}/bin/lsnrctl stop {{ oracle_listener_name }}
+ExecReload={{ oracle_home }}/bin/lsnrctl reload {{ oracle_listener_name }}
+Restart=on-failure
+RestartSec=30
+TimeoutStartSec=120
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

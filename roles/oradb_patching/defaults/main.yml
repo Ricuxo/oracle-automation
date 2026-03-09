@@ -1,0 +1,66 @@
+---
+# =============================================================================
+# oradb_patching – Default Variables
+# Responsabilidade: aplicação de patches Oracle via OPatch / OPatchAuto
+# Suporta rolling e non-rolling, SI e RAC
+# =============================================================================
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+oracle_user: oracle
+oracle_group: oinstall
+grid_user: grid
+
+# ── Diretórios ────────────────────────────────────────────────────────────────
+oracle_home: "{{ oracle_home_base }}/{{ oracle_version }}/dbhome_1"
+oracle_home_base: /u01/app/oracle/product
+oracle_base: /u01/app/oracle
+grid_home: "/u01/app/{{ oracle_version }}/grid"
+
+# ── Versão Oracle ─────────────────────────────────────────────────────────────
+oracle_version: "19.3.0"
+
+# ── Tipo de deployment ────────────────────────────────────────────────────────
+# Valores válidos: standalone | rac
+oracle_deployment_type: standalone
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+oracle_storage_type: filesystem
+
+# ── Identificação do banco ────────────────────────────────────────────────────
+oracle_db_name: ORCL
+oracle_sid: "{{ oracle_db_name }}"
+oracle_db_unique_name: "{{ oracle_db_name }}"
+
+# ── Patch ─────────────────────────────────────────────────────────────────────
+oracle_patch_id: ""
+oracle_patch_zip: ""
+# Exemplo:
+# oracle_patch_id: "35648110"
+# oracle_patch_zip: "p35648110_190000_Linux-x86-64.zip"
+
+# ── Staging ───────────────────────────────────────────────────────────────────
+oracle_stage_dir: /software/oracle
+oracle_patch_stage_dir: "{{ oracle_stage_dir }}/patches"
+oracle_patch_dir: "{{ oracle_patch_stage_dir }}/{{ oracle_patch_id }}"
+
+# ── Modo de patching ──────────────────────────────────────────────────────────
+# Valores válidos: rolling | nonrolling
+oracle_patch_mode: rolling
+
+# ── OPatch ────────────────────────────────────────────────────────────────────
+oracle_opatch_dir: "{{ oracle_home }}/OPatch"
+oracle_opatch_min_version: "12.2.0.1.0"
+
+# ── OPatchAuto (RAC) ──────────────────────────────────────────────────────────
+oracle_opatchauto_dir: "{{ grid_home }}/OPatch"
+
+# ── Backup antes do patch ─────────────────────────────────────────────────────
+oracle_patch_backup_spfile: true
+oracle_patch_backup_dir: "{{ oracle_base }}/patch_backup"
+
+# ── Validação pós-patch ───────────────────────────────────────────────────────
+oracle_patch_run_datapatch: true
+oracle_patch_validate: true
+
+# ── Rollback ──────────────────────────────────────────────────────────────────
+oracle_patch_rollback: false

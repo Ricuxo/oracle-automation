@@ -1,0 +1,54 @@
+---
+# =============================================================================
+# orahost_storage_asm – Default Variables
+# Responsabilidade: preparação de discos para ASM
+# Utilizado quando oracle_storage_type = asm
+# =============================================================================
+
+# ── Tipo de storage ───────────────────────────────────────────────────────────
+oracle_storage_type: asm
+
+# ── Usuários e grupos ─────────────────────────────────────────────────────────
+grid_user: grid
+oracle_group: oinstall
+
+# ── Driver ASM ────────────────────────────────────────────────────────────────
+# Valores válidos: asmlib | asmfd | udev
+oracle_asm_driver: asmlib
+
+# ── Pacotes ASMLib ────────────────────────────────────────────────────────────
+oracle_asmlib_packages:
+  - kmod-oracleasm
+  - oracleasmlib
+  - oracleasm-support
+
+# ── Discos ASM ────────────────────────────────────────────────────────────────
+# Cada item representa um disco a ser preparado para ASM
+oracle_asm_disks: []
+# Exemplo:
+# oracle_asm_disks:
+#   - label: CRS1
+#     device: /dev/sdc
+#     by_id: wwn-0x50014ee0042d2a1c   # opcional, recomendado para udev
+#   - label: CRS2
+#     device: /dev/sdd
+#     by_id: wwn-0x50014ee0042d2a1d
+#   - label: DATA1
+#     device: /dev/sde
+#     by_id: wwn-0x50014ee0042d2a1e
+#   - label: DATA2
+#     device: /dev/sdf
+#     by_id: wwn-0x50014ee0042d2a1f
+#   - label: RECO1
+#     device: /dev/sdg
+#     by_id: wwn-0x50014ee0042d2a20
+
+# ── Configuração oracleasm (asmlib only) ──────────────────────────────────────
+oracle_asm_scanorder: ""
+oracle_asm_scanexclude: ""
+
+# ── Configuração udev ─────────────────────────────────────────────────────────
+# Permissões aplicadas aos discos via udev
+oracle_udev_owner: "{{ grid_user }}"
+oracle_udev_group: asmdba
+oracle_udev_mode: "0660"

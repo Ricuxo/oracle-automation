@@ -1,0 +1,35 @@
+# ~/scripts/db_env
+# Gerenciado pelo Ansible – orahost_directories
+# Arquivo de ambiente para instância {{ item.oracle_sid }}
+# Uso: . ~/scripts/db_env
+
+# ── Instância ─────────────────────────────────────────────────────────────────
+export ORACLE_SID={{ item.oracle_sid }}
+export ORACLE_BASE={{ oracle_base }}
+export ORACLE_HOME={{ item.oracle_home | default(oracle_home_base + '/' + oracle_version + '/dbhome_1') }}
+export ORACLE_UNQNAME={{ item.oracle_db_unique_name | default(item.oracle_sid) }}
+
+# ── TNS ───────────────────────────────────────────────────────────────────────
+export TNS_ADMIN=$ORACLE_HOME/network/admin
+
+# ── PATH ──────────────────────────────────────────────────────────────────────
+export PATH=$ORACLE_HOME/bin:$ORACLE_HOME/OPatch:/usr/sbin:$PATH
+
+# ── Libraries ─────────────────────────────────────────────────────────────────
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:/usr/lib
+export CLASSPATH=$ORACLE_HOME/JRE:$ORACLE_HOME/jlib:$ORACLE_HOME/rdbms/jlib
+export CLASSPATH=$CLASSPATH:$ORACLE_HOME/network/jlib
+
+# ── NLS ───────────────────────────────────────────────────────────────────────
+export NLS_LANG='AMERICAN_AMERICA.AL32UTF8'
+export NLS_DATE_FORMAT="DD-MON-YYYY HH24:MI:SS"
+
+# ── Diretórios temporários ────────────────────────────────────────────────────
+export TMPDIR={{ oracle_base }}/TMPDIR
+export TEMP={{ oracle_base }}/TEMP
+
+# ── Alias alert log desta instância ──────────────────────────────────────────
+alias alert="tail -100f $ORACLE_BASE/diag/rdbms/\`echo \$ORACLE_SID | sed 's/.\{1\}$//' | tr [:upper:] [:lower:]\`/\$ORACLE_SID/trace/alert_\$ORACLE_SID.log"
+
+echo "Ambiente carregado: $ORACLE_SID @ $ORACLE_HOME"
+ps -ef | grep pmon | grep -v grep

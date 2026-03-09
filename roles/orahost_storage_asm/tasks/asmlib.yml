@@ -1,0 +1,65 @@
+---
+# =============================================================================
+# orahost_storage_asm – ASMLib
+# Instala kmod-oracleasm e cria labels dos discos
+# =============================================================================
+
+- name: "asmlib | Instalar pacotes ASMLib"
+  ansible.builtin.package:
+    name: "{{ oracle_asmlib_packages }}"
+    state: present
+  retries: 3
+  delay: 10
+  register: _asmlib_packages
+  until: _asmlib_packages is succeeded
+  tags: [asmlib]
+
+- name: "asmlib | Configurar oracleasm"
+  ansible.builtin.template:
+    src: oracleasm.conf.j2
+    dest: /etc/sysconfig/oracleasm
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart_oracleasm
+  tags: [asmlib]
+
+- name: "asmlib | Habilitar e iniciar oracleasm"
+  ansible.builtin.systemd:
+    name: oracleasm
+    enabled: true
+    state: started
+  tags: [asmlib]
+
+- name: "asmlib | Verificar se disco já possui label"
+  ansible.builtin.command: >
+    oracleasm querydisk {{ item.label }}
+  register: _asmlib_query
+  changed_when: false
+  failed_when: false
+  loop: "{{ oracle_asm_disks }}"
+  loop_control:
+    label: "{{ item.label }}"
+  tags: [asmlib]
+
+- name: "asmlib | Criar label dos discos ASM"
+  ansible.builtin.command: >
+    oracleasm createdisk {{ item.item.label }} {{ item.item.device }}
+  when: item.rc != 0
+  loop: "{{ _asmlib_query.results }}"
+  loop_control:
+    label: "{{ item.item.label }}"
+  register: _asmlib_create
+  changed_when: _asmlib_create.rc == 0
+  tags: [asmlib]
+
+- name: "asmlib | Listar discos ASM configurados"
+  ansible.builtin.command: oracleasm listdisks
+  register: _asmlib_list
+  changed_when: false
+  tags: [asmlib]
+
+- name: "asmlib | Exibir discos configurados"
+  ansible.builtin.debug:
+    msg: "Discos ASMLib configurados: {{ _asmlib_list.stdout_lines }}"
+  tags: [asmlib]
