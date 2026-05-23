@@ -1,22 +1,26 @@
 ---
-# Versão do Grid Infrastructure
-oracle_gi_version: "12.2.0.1.0"
-oracle_gi_version_short: "{{ oracle_gi_version.split('.')[0:4] | join('.') }}"
+# Versão do Grid Infrastructure (definida no group_vars)
+# Exemplos: 12.2.0.1.0, 19.3.0.0.0, 19.21.0.0.0, 21.3.0.0.0, 23.4.0.0.0, 26.1.0.0.0
+oracle_gi_version: "19.3.0.0.0"
 
-# Home do Grid Infrastructure
-oracle_home_gi: "/u01/app/{{ oracle_gi_version }}/grid"
+# Path do Grid Home calculado automaticamente
+# Formato: major.RU.0 (ex: 19.3.0, 21.3.0)
+oracle_gi_version_path: "{{ oracle_gi_version.split('.')[0] }}.{{ oracle_gi_version.split('.')[1] }}.{{ oracle_gi_version.split('.')[2] }}"
+oracle_home_gi: "{{ oracle_base }}/product/{{ oracle_gi_version_path }}/grid"
 
-# Diretório de stage dos binários
+# Arquivo zip do instalador - deve ser colocado em files/binarios/
+# O usuário define o nome do zip no group_vars
+oracle_gi_zip_files: []
+# Exemplo em group_vars:
+# oracle_gi_zip_files:
+#   - LINUX.X64_193000_grid_home.zip
+
+# Diretório de stage
 oracle_stage: /u01/stage
+oracle_rsp_stage: "{{ oracle_stage }}/rsp"
 
-# Arquivos de instalação do GI
-oracle_gi_zip:
-  "12.2.0.1.0":
-    - linuxx64_12201_grid_home.zip
-  "19.3.0.0.0":
-    - LINUX.X64_193000_grid_home.zip
-  "21.3.0.0.0":
-    - LINUX.X64_213000_grid_home.zip
+# Response file
+oracle_gi_responseFile: "{{ oracle_rsp_stage }}/gi_install.rsp"
 
 # Configurações RAC
 oracle_scan: your.scan.address
@@ -24,8 +28,6 @@ oracle_scan_port: 1521
 oracle_vip: "-vip"
 oracle_ic_net: "192.168.100.{{ ansible_all_ipv4_addresses[0].split('.')[-1] }}"
 
-# Configurações ASM inicial (CRS para RAC, DATA para SI Restart)
+# Diskgroup inicial
+# RAC: CRS, SI: DATA
 oracle_asm_init_dg: "{% if configure_cluster | bool %}CRS{% else %}DATA{% endif %}"
-
-# Diretório de response files
-oracle_rsp_stage: "{{ oracle_stage }}/rsp"

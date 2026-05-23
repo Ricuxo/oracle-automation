@@ -5,21 +5,21 @@ oracle_db_homes_config:
     version: 12.2.0.1.0
     edition: EE
     home: dbhome_1
-    oracle_home: "/u01/app/oracle/product/12.2.0.1/dbhome_1"
+    oracle_home: "/u01/app/oracle/product/12.2.0/dbhome_1"
     zip_files:
       - linuxx64_12201_database.zip
   "19.3.0.0.0":
     version: 19.3.0.0.0
     edition: EE
     home: dbhome_1
-    oracle_home: "/u01/app/oracle/product/19.3.0.0/dbhome_1"
+    oracle_home: "/u01/app/oracle/product/19.3.0/dbhome_1"
     zip_files:
       - LINUX.X64_193000_db_home.zip
   "21.3.0.0.0":
     version: 21.3.0.0.0
     edition: EE
     home: dbhome_1
-    oracle_home: "/u01/app/oracle/product/21.3.0.0/dbhome_1"
+    oracle_home: "/u01/app/oracle/product/21.3.0/dbhome_1"
     zip_files:
       - LINUX.X64_213000_db_home.zip
 

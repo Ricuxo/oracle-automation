@@ -3,8 +3,16 @@ configure_cluster: false
 asm_disk_management: asmlib
 storage_type: asm
 
-# Versão Oracle Database a instalar
+# Versão Oracle Database e Grid
 oracle_db_version: "19.3.0.0.0"
+oracle_gi_version: "19.3.0.0.0"
+
+# Binários
+oracle_gi_zip_files:
+  - LINUX.X64_193000_grid_home.zip
+
+oracle_db_zip_files:
+  - LINUX.X64_193000_db_home.zip
 
 # Disco dedicado para /u01
 oracle_disk_u01: /dev/sdb

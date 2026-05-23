@@ -1,9 +1,11 @@
 ---
-- name: oraswdb-install | Validar versão Oracle configurada
+- name: oraswdb-install | Validar variaveis obrigatorias
   ansible.builtin.assert:
     that:
-      - oracle_db_version in oracle_db_homes_config
-    fail_msg: "oracle_db_version '{{ oracle_db_version }}' não encontrada em oracle_db_homes_config"
+      - oracle_db_version is defined
+      - oracle_db_zip_files is defined
+      - oracle_db_zip_files | length > 0
+    fail_msg: "oracle_db_version e oracle_db_zip_files devem ser definidos no group_vars"
 
 - name: oraswdb-install | Criar oracle_home directory
   ansible.builtin.file:
@@ -23,12 +25,12 @@
 
 - name: oraswdb-install | Transferir binários do Oracle Database
   ansible.builtin.copy:
-    src: "{{ item }}"
+    src: "{{ playbook_dir }}/../files/binarios/{{ item }}"
     dest: "{{ oracle_stage }}/{{ item }}"
     owner: "{{ oracle_user }}"
     group: "{{ oracle_group }}"
     mode: '0644'
-  loop: "{{ oracle_db_homes_config[oracle_db_version].zip_files }}"
+  loop: "{{ oracle_db_zip_files }}"
 
 - name: oraswdb-install | Descompactar binários do Oracle Database
   ansible.builtin.unarchive:
@@ -37,7 +39,7 @@
     remote_src: true
     owner: "{{ oracle_user }}"
     group: "{{ oracle_group }}"
-  loop: "{{ oracle_db_homes_config[oracle_db_version].zip_files }}"
+  loop: "{{ oracle_db_zip_files }}"
 
 - name: oraswdb-install | Gerar response file
   ansible.builtin.template:
@@ -56,6 +58,10 @@
     2>&1 | tee {{ oracle_stage }}/db_install.log
   become: true
   become_user: "{{ oracle_user }}"
+  environment:
+    ORACLE_BASE: "{{ oracle_base }}"
+    TMP: "{{ oracle_tmp_dir | default('/u01/tmp') }}"
+    TMPDIR: "{{ oracle_tmp_dir | default('/u01/tmp') }}"
   register: db_install
   failed_when:
     - db_install.rc != 0
