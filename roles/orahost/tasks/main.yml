@@ -22,6 +22,10 @@
   ansible.builtin.include_tasks: storage.yml
   when: configure_u01_disk | bool
 
+- name: Configurar swap
+  ansible.builtin.include_tasks: swap.yml
+  when: configure_swap | bool
+
 - name: Criar diretórios Oracle
   ansible.builtin.file:
     path: "{{ item.path }}"

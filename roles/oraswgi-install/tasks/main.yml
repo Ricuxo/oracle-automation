@@ -86,3 +86,11 @@
   failed_when:
     - gi_configtools.rc != 0
     - "'Successfully Setup Software' not in gi_configtools.stdout"
+
+- name: oraswgi-install | Validar swap
+  ansible.builtin.assert:
+    that:
+      - ansible_swaptotal_mb >= 2048
+    fail_msg: "Swap insuficiente: {{ ansible_swaptotal_mb }}MB. Mínimo recomendado: 2048MB"
+    success_msg: "Swap ok: {{ ansible_swaptotal_mb }}MB"
+  ignore_errors: true

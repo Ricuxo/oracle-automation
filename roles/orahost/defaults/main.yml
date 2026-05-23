@@ -54,8 +54,8 @@ oracle_limits:
   - { domain: "{{ oracle_user }}", type: hard, item: stack,    value: 32768     }
   - { domain: "{{ oracle_user }}", type: soft, item: memlock,  value: 134217728 }
   - { domain: "{{ oracle_user }}", type: hard, item: memlock,  value: 134217728 }
-  - { domain: "{{ oracle_user }}", type: soft, item: data,     value: 134217728 }
-  - { domain: "{{ oracle_user }}", type: hard, item: data,     value: 134217728 }
+  - { domain: "{{ oracle_user }}", type: soft, item: data,     value: unlimited }
+  - { domain: "{{ oracle_user }}", type: hard, item: data,     value: unlimited }
 
 # Hugepages (% da RAM total)
 hugepages_percent: 50
@@ -137,3 +137,11 @@ oracle_disk_u01_fstype: xfs
 oracle_disk_u01_mount: /u01
 oracle_disk_u01_mount_opts: defaults,noatime
 configure_u01_disk: true
+
+# Swap
+configure_swap: true
+swap_file_path: /swapfile
+# Tamanho baseado na recomendação Oracle:
+# RAM <= 16GB -> swap = RAM
+# RAM > 16GB  -> swap = 16GB
+swap_size_mb: "{{ [ansible_memtotal_mb, 16384] | min }}"
