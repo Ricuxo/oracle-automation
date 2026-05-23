@@ -24,3 +24,6 @@ oracle_asm_diskgroups:
 
 # Tipo de storage: asm ou fs
 storage_type: asm
+
+# Versão Oracle Database a instalar
+oracle_db_version: "19.3.0.0.0"

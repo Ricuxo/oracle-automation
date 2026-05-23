@@ -1,0 +1,46 @@
+################################################################################
+# ATENCAO: Este arquivo e gerenciado pelo Ansible
+# Role   : oraswdb-install
+# Template: db_install.rsp.j2
+#
+# Qualquer alteracao manual sera sobrescrita na proxima execucao do playbook.
+# Para alterar configuracoes, edite o arquivo de variaveis correspondente:
+#   inventories/<ambiente>/group_vars/
+################################################################################
+
+oracle.install.responseFileVersion=/oracle/install/rspfmt_dbinstall_response_schema_v{% if oracle_db_version.startswith('12') %}12.2.0{% elif oracle_db_version.startswith('19') %}19.0.0{% elif oracle_db_version.startswith('21') %}21.0.0{% endif %}
+
+#-------------------------------------------------------------------------------
+# INSTALL OPTIONS
+#-------------------------------------------------------------------------------
+oracle.install.option=INSTALL_DB_SWONLY
+UNIX_GROUP_NAME={{ oracle_group }}
+INVENTORY_LOCATION={{ oracle_inventory }}
+ORACLE_HOME={{ oracle_db_home }}
+ORACLE_BASE={{ oracle_base }}
+oracle.install.db.InstallEdition={{ oracle_db_homes_config[oracle_db_version].edition }}
+
+#-------------------------------------------------------------------------------
+# OS GROUPS
+#-------------------------------------------------------------------------------
+oracle.install.db.OSDBA_GROUP={{ osdba_group }}
+oracle.install.db.OSOPER_GROUP={{ osoper_group }}
+oracle.install.db.OSBACKUPDBA_GROUP={{ osbackupdba_group }}
+oracle.install.db.OSDGDBA_GROUP={{ osdgdba_group }}
+oracle.install.db.OSKMDBA_GROUP={{ oskmdba_group }}
+oracle.install.db.OSRACDBA_GROUP={{ osracdba_group }}
+
+#-------------------------------------------------------------------------------
+# RAC
+#-------------------------------------------------------------------------------
+oracle.install.db.rootconfig.executeRootScript=false
+{% if configure_cluster | bool %}
+oracle.install.db.CLUSTER_NODES={{ ansible_play_hosts | map('extract', hostvars, 'ansible_hostname') | join(',') }}
+oracle.install.db.isRACOneInstall=false
+{% endif %}
+
+#-------------------------------------------------------------------------------
+# SECURITY
+#-------------------------------------------------------------------------------
+SECURITY_UPDATES_VIA_MYORACLESUPPORT=false
+DECLINE_SECURITY_UPDATES=true

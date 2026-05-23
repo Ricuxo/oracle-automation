@@ -1,0 +1,45 @@
+---
+# Configurações por versão do Oracle Database
+oracle_db_homes_config:
+  "12.2.0.1.0":
+    version: 12.2.0.1.0
+    edition: EE
+    home: dbhome_1
+    oracle_home: "/u01/app/oracle/product/12.2.0.1/dbhome_1"
+    zip_files:
+      - linuxx64_12201_database.zip
+  "19.3.0.0.0":
+    version: 19.3.0.0.0
+    edition: EE
+    home: dbhome_1
+    oracle_home: "/u01/app/oracle/product/19.3.0.0/dbhome_1"
+    zip_files:
+      - LINUX.X64_193000_db_home.zip
+  "21.3.0.0.0":
+    version: 21.3.0.0.0
+    edition: EE
+    home: dbhome_1
+    oracle_home: "/u01/app/oracle/product/21.3.0.0/dbhome_1"
+    zip_files:
+      - LINUX.X64_213000_db_home.zip
+
+# Versão a instalar (definida no group_vars)
+oracle_db_version: "19.3.0.0.0"
+
+# Atalho para config da versão selecionada
+oracle_db_home: "{{ oracle_db_homes_config[oracle_db_version].oracle_home }}"
+
+# Diretório de stage
+oracle_stage: /u01/stage
+oracle_rsp_stage: "{{ oracle_stage }}/rsp"
+
+# Response file
+oracle_db_responseFile: "{{ oracle_rsp_stage }}/db_install.rsp"
+
+# Grupos OS para o Oracle Database
+osdba_group: dba
+osoper_group: oper
+osbackupdba_group: backupdba
+osdgdba_group: dgdba
+oskmdba_group: kmdba
+osracdba_group: racdba

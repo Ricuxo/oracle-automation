@@ -1,0 +1,92 @@
+---
+- name: oradb-create | Criar diretório de response files
+  ansible.builtin.file:
+    path: "{{ oracle_rsp_stage }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0755'
+    state: directory
+
+- name: oradb-create | Criar diretórios de datafiles (filesystem)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0755'
+    state: directory
+  loop:
+    - "{{ oracle_db_data_destination }}"
+    - "{{ oracle_db_recovery_destination }}"
+  when: storage_type == 'fs'
+
+- name: oradb-create | Gerar response file DBCA
+  ansible.builtin.template:
+    src: dbca.rsp.j2
+    dest: "{{ oracle_dbca_responseFile }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0640'
+
+- name: oradb-create | Iniciar listener
+  ansible.builtin.shell: |
+    {{ oracle_db_home }}/bin/lsnrctl start {{ oracle_listener_name }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: lsnrctl_start
+  failed_when:
+    - lsnrctl_start.rc != 0
+    - "'already running' not in lsnrctl_start.stdout"
+  changed_when: "'Started' in lsnrctl_start.stdout"
+
+- name: oradb-create | Criar banco via DBCA
+  ansible.builtin.shell: |
+    {{ oracle_db_home }}/bin/dbca -silent \
+    -createDatabase \
+    -responseFile {{ oracle_dbca_responseFile }} \
+    2>&1 | tee {{ oracle_stage }}/dbca_create.log
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: dbca_create
+  failed_when:
+    - dbca_create.rc != 0
+    - "'100% complete' not in dbca_create.stdout"
+
+- name: oradb-create | Configurar oratab
+  ansible.builtin.lineinfile:
+    path: /etc/oratab
+    line: "{{ oracle_db_name }}:{{ oracle_db_home }}:Y"
+    state: present
+    backup: true
+
+- name: oradb-create | Salvar state do PDB
+  ansible.builtin.shell: |
+    {{ oracle_db_home }}/bin/sqlplus -s / as sysdba <<EOF
+    ALTER PLUGGABLE DATABASE {{ oracle_pdb_name }} SAVE STATE;
+    EXIT;
+    EOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  environment:
+    ORACLE_HOME: "{{ oracle_db_home }}"
+    ORACLE_SID: "{{ oracle_db_name }}"
+  when: oracle_db_create_container | bool
+  changed_when: false
+
+- name: oradb-create | Validar banco criado
+  ansible.builtin.shell: |
+    {{ oracle_db_home }}/bin/sqlplus -s / as sysdba <<EOF
+    SELECT name, open_mode, db_unique_name FROM v\$database;
+    SELECT name, open_mode FROM v\$pdbs;
+    EXIT;
+    EOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  environment:
+    ORACLE_HOME: "{{ oracle_db_home }}"
+    ORACLE_SID: "{{ oracle_db_name }}"
+  register: db_validate
+  changed_when: false
+
+- name: oradb-create | Exibir status do banco
+  ansible.builtin.debug:
+    msg: "{{ db_validate.stdout_lines }}"

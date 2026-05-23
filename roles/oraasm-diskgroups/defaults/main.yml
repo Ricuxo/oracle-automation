@@ -1,0 +1,20 @@
+---
+# Comando asmca
+oracle_asmca: "{{ oracle_home_gi }}/bin/asmca"
+
+# Configurações padrão de diskgroup
+asm_diskgroup_state: present
+asm_au_size: 4
+
+# oracle_asm_diskgroups é definido no group_vars (si.yml ou rac.yml)
+# Exemplo:
+# oracle_asm_diskgroups:
+#   - diskgroup: DATA
+#     state: present
+#     properties:
+#       - { redundancy: EXTERNAL, ausize: 4 }
+#     attributes:
+#       - { name: compatible.asm,   value: 19.0.0.0.0 }
+#       - { name: compatible.rdbms, value: 19.0.0.0.0 }
+#     disk:
+#       - { device: /dev/sdb, asmlabel: DATA01 }

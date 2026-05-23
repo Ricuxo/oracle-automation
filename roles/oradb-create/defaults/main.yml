@@ -1,0 +1,28 @@
+---
+# Configurações do banco
+oracle_db_name: ORCL
+oracle_db_unique_name: "{{ oracle_db_name }}"
+oracle_pdb_name: ORCLPDB1
+oracle_db_type: MULTIPURPOSE
+oracle_db_charset: AL32UTF8
+oracle_db_ncharset: AL16UTF16
+oracle_db_create_container: true
+oracle_db_num_pdbs: 1
+oracle_db_memory_mgmt: AUTO_SGA
+oracle_db_total_memory_mb: 2048
+oracle_db_redo_size_mb: 200
+oracle_db_block_size: 8192
+
+# Storage
+oracle_db_storage_type: "{{ storage_type | upper }}"  # ASM ou FS
+oracle_db_data_destination: "{% if storage_type == 'asm' %}+DATA{% else %}/u02/oradata{% endif %}"
+oracle_db_recovery_destination: "{% if storage_type == 'asm' %}+FRA{% else %}/u03/fast_recovery_area{% endif %}"
+oracle_db_recovery_size_mb: 10240
+
+# Response file
+oracle_rsp_stage: "{{ oracle_stage }}/rsp"
+oracle_dbca_responseFile: "{{ oracle_rsp_stage }}/dbca.rsp"
+
+# Listener
+oracle_listener_port: 1521
+oracle_listener_name: LISTENER

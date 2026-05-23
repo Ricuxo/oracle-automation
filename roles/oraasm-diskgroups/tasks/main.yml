@@ -1,0 +1,54 @@
+---
+- name: oraasm-diskgroups | Validar oracle_asm_diskgroups definido
+  ansible.builtin.assert:
+    that:
+      - oracle_asm_diskgroups is defined
+      - oracle_asm_diskgroups | length > 0
+    fail_msg: "oracle_asm_diskgroups não definido ou vazio no group_vars"
+
+- name: oraasm-diskgroups | Criar diskgroups ASM
+  ansible.builtin.shell: |
+    {{ oracle_asmca }} -silent -createDiskGroup \
+    -diskGroupName {{ item.diskgroup }} \
+    -disk {{ item.disk | map(attribute='asmlabel') | map('regex_replace', '^', 'ORCL:') | join(',') }} \
+    -redundancy {{ item.properties | map(attribute='redundancy') | first }} \
+    -au_size {{ item.properties | map(attribute='ausize') | first }}
+  become: true
+  become_user: "{{ oracle_user }}"
+  loop: "{{ oracle_asm_diskgroups | selectattr('state', 'equalto', 'present') | list }}"
+  loop_control:
+    label: "{{ item.diskgroup }}"
+  register: dg_create
+  failed_when:
+    - dg_create.rc != 0
+    - "'already exists' not in dg_create.stderr"
+  changed_when: dg_create.rc == 0
+
+- name: oraasm-diskgroups | Configurar atributos dos diskgroups
+  ansible.builtin.shell: |
+    {{ oracle_home_gi }}/bin/sqlplus -s / as sysasm <<EOF
+    ALTER DISKGROUP {{ item.0.diskgroup }} SET ATTRIBUTE '{{ item.1.name }}' = '{{ item.1.value }}';
+    EXIT;
+    EOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  loop: "{{ oracle_asm_diskgroups | selectattr('state', 'equalto', 'present') | subelements('attributes') }}"
+  loop_control:
+    label: "{{ item.0.diskgroup }}.{{ item.1.name }}"
+  when: item.0.attributes is defined
+
+- name: oraasm-diskgroups | Listar diskgroups criados
+  ansible.builtin.shell: |
+    {{ oracle_home_gi }}/bin/sqlplus -s / as sysasm <<EOF
+    SET PAGESIZE 100
+    SELECT name, state, type, total_mb, free_mb FROM v\$asm_diskgroup;
+    EXIT;
+    EOF
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: dg_list
+  changed_when: false
+
+- name: oraasm-diskgroups | Exibir diskgroups
+  ansible.builtin.debug:
+    msg: "{{ dg_list.stdout_lines }}"

@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: oraasm-diskgroups
+  description: Criacao e gerenciamento de diskgroups ASM
+  min_ansible_version: "2.14"
+  platforms:
+    - name: OracleLinux
+      versions:
+        - "8"
+        - "9"
+  galaxy_tags:
+    - oracle
+    - asm
+    - diskgroups
+
+dependencies: []

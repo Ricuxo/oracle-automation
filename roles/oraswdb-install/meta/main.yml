@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: oraswdb-install
+  description: Instalacao do Oracle Database Software (12c, 19c, 21c) - SI e RAC
+  min_ansible_version: "2.14"
+  platforms:
+    - name: OracleLinux
+      versions:
+        - "8"
+        - "9"
+  galaxy_tags:
+    - oracle
+    - database
+    - install
+
+dependencies: []

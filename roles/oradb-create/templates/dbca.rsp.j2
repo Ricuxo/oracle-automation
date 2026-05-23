@@ -1,0 +1,44 @@
+################################################################################
+# ATENCAO: Este arquivo e gerenciado pelo Ansible
+# Role   : oradb-create
+# Template: dbca.rsp.j2
+#
+# Qualquer alteracao manual sera sobrescrita na proxima execucao do playbook.
+# Para alterar configuracoes, edite o arquivo de variaveis correspondente:
+#   inventories/<ambiente>/group_vars/
+################################################################################
+
+responseFileVersion=/oracle/assistants/rspfmt_dbca_response_schema_v12.2.0
+gdbName={{ oracle_db_name }}
+sid={{ oracle_db_name }}
+databaseConfigType={% if configure_cluster | bool %}RAC{% else %}SI{% endif %}
+
+templateName=General_Purpose.dbc
+sysPassword={{ vault_sys_password }}
+systemPassword={{ vault_system_password }}
+
+createAsContainerDatabase={{ oracle_db_create_container | lower }}
+numberOfPDBs={{ oracle_db_num_pdbs }}
+pdbName={{ oracle_pdb_name }}
+pdbAdminPassword={{ vault_pdbadmin_password }}
+
+storageType={{ oracle_db_storage_type }}
+datafileDestination={{ oracle_db_data_destination }}
+recoveryAreaDestination={{ oracle_db_recovery_destination }}
+recoveryAreaSize={{ oracle_db_recovery_size_mb }}
+
+characterSet={{ oracle_db_charset }}
+nationalCharacterSet={{ oracle_db_ncharset }}
+memoryMgmtType={{ oracle_db_memory_mgmt }}
+totalMemory={{ oracle_db_total_memory_mb }}
+
+redoLogFileSize={{ oracle_db_redo_size_mb }}
+databaseType={{ oracle_db_type }}
+
+{% if configure_cluster | bool %}
+nodelist={{ ansible_play_hosts | map('extract', hostvars, 'ansible_hostname') | join(',') }}
+{% endif %}
+
+listeners={{ oracle_listener_name }}
+emConfiguration=NONE
+ignorePreReqs=true
