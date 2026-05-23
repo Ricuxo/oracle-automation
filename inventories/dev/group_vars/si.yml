@@ -1,29 +1,31 @@
 ---
 configure_cluster: false
 asm_disk_management: asmlib
+storage_type: asm
 
+# Versão Oracle Database a instalar
+oracle_db_version: "19.3.0.0.0"
+
+# Disco dedicado para /u01
+oracle_disk_u01: /dev/sdb
+
+# Diskgroups ASM
 oracle_asm_diskgroups:
   - diskgroup: DATA
     state: present
     properties:
       - { redundancy: EXTERNAL, ausize: 4 }
     attributes:
-      - { name: compatible.asm,   value: 12.2.0.1.0 }
-      - { name: compatible.rdbms, value: 12.2.0.1.0 }
+      - { name: compatible.asm,   value: 19.0.0.0.0 }
+      - { name: compatible.rdbms, value: 19.0.0.0.0 }
     disk:
-      - { device: /dev/sdb, asmlabel: DATA01 }
+      - { device: /dev/sdc, asmlabel: DATA01 }
   - diskgroup: FRA
     state: present
     properties:
       - { redundancy: EXTERNAL, ausize: 4 }
     attributes:
-      - { name: compatible.asm,   value: 12.2.0.1.0 }
-      - { name: compatible.rdbms, value: 12.2.0.1.0 }
+      - { name: compatible.asm,   value: 19.0.0.0.0 }
+      - { name: compatible.rdbms, value: 19.0.0.0.0 }
     disk:
-      - { device: /dev/sdc, asmlabel: FRA01 }
-
-# Tipo de storage: asm ou fs
-storage_type: asm
-
-# Versão Oracle Database a instalar
-oracle_db_version: "19.3.0.0.0"
+      - { device: /dev/sdd, asmlabel: FRA01 }

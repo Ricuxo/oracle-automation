@@ -1,34 +1,67 @@
 ---
-- name: Instalar kmod-oracleasm
-  ansible.builtin.dnf:
-    name: kmod-oracleasm
-    state: present
+- name: orahost-storage | asmlib | Habilitar repositório addons (OL8)
+  ansible.builtin.command: dnf config-manager --enable ol8_addons
+  when: ansible_distribution_major_version == '8'
+  changed_when: false
 
-- name: Instalar oracleasm-support
-  ansible.builtin.dnf:
-    name: "{{ asmlibsupport_rpm[ansible_distribution_major_version] }}"
-    state: present
-    disable_gpg_check: true
+- name: orahost-storage | asmlib | Habilitar repositório addons (OL9)
+  ansible.builtin.command: dnf config-manager --enable ol9_addons
+  when: ansible_distribution_major_version == '9'
+  changed_when: false
 
-- name: Instalar oracleasmlib
+- name: orahost-storage | asmlib v3 | Instalar oracleasm-support
   ansible.builtin.dnf:
-    name: "{{ asmlib_rpm[ansible_distribution_major_version] }}"
-    state: present
-    disable_gpg_check: true
+    name: oracleasm-support
+    state: latest
 
-- name: Configurar oracleasm
-  ansible.builtin.template:
-    src: oracleasm.conf.j2
-    dest: /etc/sysconfig/oracleasm
+- name: orahost-storage | asmlib v3 | Instalar kmod-redhat-oracleasm (OL8 RHCK)
+  ansible.builtin.dnf:
+    name: kmod-redhat-oracleasm
+    state: present
+  when:
+    - ansible_distribution_major_version == '8'
+    - "'uek' not in ansible_kernel"
+
+- name: orahost-storage | asmlib v3 | Transferir oracleasmlib RPM
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../files/binarios/oracleasmlib-{{ ansible_distribution_major_version }}.rpm"
+    dest: "{{ oracle_stage }}/oracleasmlib.rpm"
     owner: root
     group: root
     mode: '0644'
 
-- name: Inicializar oracleasm
-  ansible.builtin.command: oracleasm init
+- name: orahost-storage | asmlib v3 | Instalar oracleasmlib
+  ansible.builtin.dnf:
+    name: "{{ oracle_stage }}/oracleasmlib.rpm"
+    state: present
+    disable_gpg_check: true
+
+- name: orahost-storage | asmlib v3 | Habilitar io_uring (OL9 RHCK)
+  ansible.posix.sysctl:
+    name: kernel.io_uring_disabled
+    value: '0'
+    state: present
+    sysctl_file: /etc/sysctl.d/io_uring.conf
+    reload: true
+  when:
+    - ansible_distribution_major_version == '9'
+    - "'uek' not in ansible_kernel"
+
+- name: orahost-storage | asmlib v3 | Configurar oracleasm
+  ansible.builtin.command: >
+    oracleasm configure
+    -u {{ asm_disk_owner }}
+    -g {{ asm_disk_group }}
+    -e -s y
   changed_when: false
 
-- name: Criar labels ASMLib nos discos
+- name: orahost-storage | asmlib v3 | Habilitar e iniciar servico oracleasm
+  ansible.builtin.systemd:
+    name: oracleasm
+    state: started
+    enabled: true
+
+- name: orahost-storage | asmlib v3 | Criar labels ASMLib nos discos
   ansible.builtin.command: >
     oracleasm createdisk {{ item.1.asmlabel }} {{ item.1.device }}1
   loop: "{{ oracle_asm_diskgroups | subelements('disk') }}"
@@ -40,11 +73,15 @@
     - "'already labeled' not in asmlib_create.stderr"
   changed_when: "'Writing disk header' in asmlib_create.stdout"
 
-- name: Listar discos ASMLib criados
+- name: orahost-storage | asmlib v3 | Scan discos ASMLib
+  ansible.builtin.command: oracleasm scandisks
+  changed_when: false
+
+- name: orahost-storage | asmlib v3 | Listar discos ASMLib criados
   ansible.builtin.command: oracleasm listdisks
   register: asmlib_listdisks
   changed_when: false
 
-- name: Exibir discos ASMLib
+- name: orahost-storage | asmlib v3 | Exibir discos ASMLib
   ansible.builtin.debug:
     msg: "{{ asmlib_listdisks.stdout_lines }}"

@@ -1,25 +1,19 @@
 ---
 # Método de gerência dos discos ASM: asmlib ou udev
+# OL8/OL9 com UEK7+: asmlib v3 (sem kmod-oracleasm)
 asm_disk_management: asmlib
 
-# Discos para ASM
-asm_disks: []
-# Exemplo:
-# asm_disks:
-#   - { device: /dev/sdb, diskgroup: CRS  }
-#   - { device: /dev/sdc, diskgroup: DATA }
-#   - { device: /dev/sdd, diskgroup: FRA  }
-
-# RPMs ASMLib por versão de OS
-asmlib_rpm:
-  "7": "https://download.oracle.com/otn_software/asmlib/oracleasmlib-2.0.12-1.el7.x86_64.rpm"
-  "8": "https://download.oracle.com/otn_software/asmlib/oracleasmlib-2.0.17-1.el8.x86_64.rpm"
-
-asmlibsupport_rpm:
-  "7": "https://yum.oracle.com/repo/OracleLinux/OL7/latest/x86_64/getPackage/oracleasm-support-2.1.11-2.el7.x86_64.rpm"
-  "8": "https://yum.oracle.com/repo/OracleLinux/OL8/latest/x86_64/getPackage/oracleasm-support-2.1.11-2.el8.x86_64.rpm"
-
-# udev - owner/group dos dispositivos
+# Configurações ASMLib
 asm_disk_owner: oracle
 asm_disk_group: dba
 asm_disk_mode: "0660"
+
+# udev - owner/group dos dispositivos
+asm_udev_owner: oracle
+asm_udev_group: dba
+asm_udev_mode: "0660"
+
+# Diretório de stage
+oracle_stage: /u01/stage
+oracle_user: oracle
+oracle_group: oinstall

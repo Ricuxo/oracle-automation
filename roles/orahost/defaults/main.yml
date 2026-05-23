@@ -54,8 +54,8 @@ oracle_limits:
   - { domain: "{{ oracle_user }}", type: hard, item: stack,    value: 32768     }
   - { domain: "{{ oracle_user }}", type: soft, item: memlock,  value: 134217728 }
   - { domain: "{{ oracle_user }}", type: hard, item: memlock,  value: 134217728 }
-  - { domain: "{{ oracle_user }}", type: soft, item: data,     value: unlimited }
-  - { domain: "{{ oracle_user }}", type: hard, item: data,     value: unlimited }
+  - { domain: "{{ oracle_user }}", type: soft, item: data,     value: 134217728 }
+  - { domain: "{{ oracle_user }}", type: hard, item: data,     value: 134217728 }
 
 # Hugepages (% da RAM total)
 hugepages_percent: 50
@@ -130,3 +130,10 @@ oracle_packages_ol9:
 
 # Lista final resolvida por versão do OS
 oracle_packages: "{{ oracle_packages_ol8 if ansible_distribution_major_version == '8' else oracle_packages_ol9 if ansible_distribution_major_version == '9' else [] }}"
+
+# Storage /u01
+oracle_disk_u01: /dev/sdb
+oracle_disk_u01_fstype: xfs
+oracle_disk_u01_mount: /u01
+oracle_disk_u01_mount_opts: defaults,noatime
+configure_u01_disk: true

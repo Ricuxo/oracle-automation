@@ -1,0 +1,51 @@
+---
+- name: orahost | storage | Instalar parted e xfsprogs
+  ansible.builtin.dnf:
+    name:
+      - parted
+      - xfsprogs
+    state: present
+
+- name: orahost | storage | Verificar se /u01 já está montado
+  ansible.builtin.command: mountpoint -q {{ oracle_disk_u01_mount }}
+  register: u01_mounted
+  changed_when: false
+  failed_when: false
+
+- name: orahost | storage | Criar tabela de partição GPT
+  ansible.builtin.command: parted -s {{ oracle_disk_u01 }} mklabel gpt
+  when: u01_mounted.rc != 0
+
+- name: orahost | storage | Criar partição primária
+  ansible.builtin.command: parted -s {{ oracle_disk_u01 }} mkpart primary {{ oracle_disk_u01_fstype }} 1MiB 100%
+  when: u01_mounted.rc != 0
+
+- name: orahost | storage | Formatar partição com XFS
+  community.general.filesystem:
+    fstype: "{{ oracle_disk_u01_fstype }}"
+    dev: "{{ oracle_disk_u01 }}1"
+    force: false
+  when: u01_mounted.rc != 0
+
+- name: orahost | storage | Criar ponto de montagem /u01
+  ansible.builtin.file:
+    path: "{{ oracle_disk_u01_mount }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: orahost | storage | Montar /u01
+  ansible.posix.mount:
+    path: "{{ oracle_disk_u01_mount }}"
+    src: "{{ oracle_disk_u01 }}1"
+    fstype: "{{ oracle_disk_u01_fstype }}"
+    opts: "{{ oracle_disk_u01_mount_opts }}"
+    state: mounted
+  when: u01_mounted.rc != 0
+
+- name: orahost | storage | Verificar montagem /u01
+  ansible.builtin.command: mountpoint -q {{ oracle_disk_u01_mount }}
+  register: u01_check
+  changed_when: false
+  failed_when: u01_check.rc != 0

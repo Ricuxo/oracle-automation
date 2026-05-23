@@ -18,6 +18,10 @@
     create_home: true
     state: present
 
+- name: Configurar storage /u01
+  ansible.builtin.include_tasks: storage.yml
+  when: configure_u01_disk | bool
+
 - name: Criar diretórios Oracle
   ansible.builtin.file:
     path: "{{ item.path }}"
