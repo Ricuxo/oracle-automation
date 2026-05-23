@@ -1,4 +1,10 @@
-# Gerado pelo Ansible - nao editar manualmente
+################################################################################
+# ATENCAO: Este arquivo e gerenciado pelo Ansible
+# Role   : orahost
+# Template: oracle_bash_profile.j2
+#
+# Qualquer alteracao manual sera sobrescrita na proxima execucao do playbook.
+################################################################################
 
 # Oracle Environment
 export ORACLE_BASE={{ oracle_base }}
@@ -7,6 +13,12 @@ export ORACLE_SID={{ oracle_sid | default('') }}
 export ORACLE_UNQNAME={{ oracle_unqname | default('') }}
 export NLS_DATE_FORMAT='DD/MM/YYYY HH24:MI:SS'
 export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+
+# Temp dirs - Oracle recommendation: use dedicated mount point
+export TMP={{ oracle_tmp_dir | default('/u01/tmp') }}
+export TEMP=$TMP
+export TMPDIR=$TMP
+export TEMPDIR=$TMP
 
 # Prompt
 export PS1="\[\e[38;1m\]\u@\[\e[34;1m\]\h [\$ORACLE_SID] \$PWD> \[\e[0m\]"

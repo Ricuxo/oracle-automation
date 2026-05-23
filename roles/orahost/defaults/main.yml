@@ -22,6 +22,7 @@ oracle_inventory: /u01/app/oraInventory
 oracle_stage: /u01/stage
 
 oracle_directories:
+  - { path: "{{ oracle_tmp_dir }}", owner: "{{ oracle_user }}", group: "{{ oracle_group }}", mode: '1777' }
   - { path: "{{ oracle_base }}",      owner: "{{ oracle_user }}", group: "{{ oracle_group }}", mode: '0755' }
   - { path: "{{ oracle_inventory }}", owner: "{{ oracle_user }}", group: "{{ oracle_group }}", mode: '0755' }
   - { path: "{{ oracle_stage }}",     owner: "{{ oracle_user }}", group: "{{ oracle_group }}", mode: '0755' }
@@ -145,3 +146,6 @@ swap_file_path: /swapfile
 # RAM <= 16GB -> swap = RAM
 # RAM > 16GB  -> swap = 16GB
 swap_size_mb: "{{ [ansible_memtotal_mb, 16384] | min }}"
+
+# Diretório temporário para instalação Oracle
+oracle_tmp_dir: /u01/tmp
