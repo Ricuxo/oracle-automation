@@ -1,0 +1,5 @@
+---
+- name: orahost
+  hosts: all
+  roles:
+    - orahost

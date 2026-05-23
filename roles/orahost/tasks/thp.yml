@@ -1,0 +1,26 @@
+---
+- name: Desabilitar THP - enabled
+  ansible.builtin.shell: |
+    echo never > /sys/kernel/mm/transparent_hugepage/enabled
+  changed_when: false
+
+- name: Desabilitar THP - defrag
+  ansible.builtin.shell: |
+    echo never > /sys/kernel/mm/transparent_hugepage/defrag
+  changed_when: false
+
+- name: Persistir desativacao do THP via rc.local
+  ansible.builtin.blockinfile:
+    path: /etc/rc.local
+    block: |
+      # Desabilitar Transparent Hugepages - Oracle
+      echo never > /sys/kernel/mm/transparent_hugepage/enabled
+      echo never > /sys/kernel/mm/transparent_hugepage/defrag
+    marker: "# {mark} ANSIBLE MANAGED - THP"
+    create: true
+    mode: '0755'
+
+- name: Garantir rc.local executavel
+  ansible.builtin.file:
+    path: /etc/rc.local
+    mode: '0755'

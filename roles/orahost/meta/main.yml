@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: orahost
+  description: Configuracao do host para instalacao Oracle (grupos, usuarios, dirs, kernel, limits, hugepages)
+  min_ansible_version: "2.14"
+  platforms:
+    - name: OracleLinux
+      versions:
+        - "8"
+        - "9"
+  galaxy_tags:
+    - oracle
+    - linux
+    - orahost
+
+dependencies: []

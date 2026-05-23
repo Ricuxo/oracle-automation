@@ -1,0 +1,12 @@
+---
+- name: Calcular numero de Hugepages
+  ansible.builtin.set_fact:
+    hugepages_nr: "{{ ((ansible_memtotal_mb * hugepages_percent / 100) * 1024 / 2048) | int }}"
+
+- name: Configurar Hugepages no sysctl
+  ansible.posix.sysctl:
+    name: vm.nr_hugepages
+    value: "{{ hugepages_nr }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-oracle-hugepages.conf
+    reload: true

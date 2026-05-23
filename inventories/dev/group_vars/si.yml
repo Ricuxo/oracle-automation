@@ -1,0 +1,26 @@
+---
+configure_cluster: false
+asm_disk_management: asmlib
+
+oracle_asm_diskgroups:
+  - diskgroup: DATA
+    state: present
+    properties:
+      - { redundancy: EXTERNAL, ausize: 4 }
+    attributes:
+      - { name: compatible.asm,   value: 12.2.0.1.0 }
+      - { name: compatible.rdbms, value: 12.2.0.1.0 }
+    disk:
+      - { device: /dev/sdb, asmlabel: DATA01 }
+  - diskgroup: FRA
+    state: present
+    properties:
+      - { redundancy: EXTERNAL, ausize: 4 }
+    attributes:
+      - { name: compatible.asm,   value: 12.2.0.1.0 }
+      - { name: compatible.rdbms, value: 12.2.0.1.0 }
+    disk:
+      - { device: /dev/sdc, asmlabel: FRA01 }
+
+# Tipo de storage: asm ou fs
+storage_type: asm

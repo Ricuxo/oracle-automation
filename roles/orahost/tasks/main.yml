@@ -1,0 +1,77 @@
+---
+- name: Criar grupos Oracle
+  ansible.builtin.group:
+    name: "{{ item.group }}"
+    gid: "{{ item.gid }}"
+    state: present
+  loop: "{{ oracle_groups }}"
+
+- name: Criar usuário Oracle
+  ansible.builtin.user:
+    name: "{{ oracle_user }}"
+    uid: "{{ oracle_user_uid }}"
+    group: "{{ oracle_group }}"
+    groups: "{{ oracle_groups | map(attribute='group') | join(',') }}"
+    append: false
+    shell: /bin/bash
+    home: /home/{{ oracle_user }}
+    create_home: true
+    state: present
+
+- name: Criar diretórios Oracle
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+    state: directory
+  loop: "{{ oracle_directories }}"
+
+- name: Instalar pacotes requeridos pelo Oracle
+  ansible.builtin.dnf:
+    name: "{{ oracle_packages }}"
+    state: present
+
+- name: Configurar parâmetros de kernel (sysctl)
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-oracle.conf
+    reload: true
+  loop: "{{ oracle_sysctl }}"
+
+- name: Configurar limits do Oracle
+  community.general.pam_limits:
+    domain: "{{ item.domain }}"
+    limit_type: "{{ item.type }}"
+    limit_item: "{{ item.item }}"
+    value: "{{ item.value }}"
+    dest: /etc/security/limits.d/99-oracle.conf
+  loop: "{{ oracle_limits }}"
+
+- name: Configurar Hugepages
+  ansible.builtin.include_tasks: hugepages.yml
+
+- name: Desabilitar Transparent Hugepages
+  ansible.builtin.include_tasks: thp.yml
+  when: disable_thp | bool
+
+- name: Configurar bash profile do Oracle
+  ansible.builtin.template:
+    src: oracle_bash_profile.j2
+    dest: /home/{{ oracle_user }}/.bash_profile
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0644'
+
+- name: Configurar hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Adicionar entrada no /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ ansible_host }} {{ inventory_hostname }} {{ inventory_hostname.split('.')[0] }}"
+    state: present
+    backup: true

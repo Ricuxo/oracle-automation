@@ -1,0 +1,5 @@
+---
+- name: oraasm-diskgroups
+  hosts: all
+  roles:
+    - oraasm-diskgroups

@@ -1,0 +1,43 @@
+# Gerado pelo Ansible - nao editar manualmente
+
+# Oracle Environment
+export ORACLE_BASE={{ oracle_base }}
+export ORACLE_HOME={{ oracle_home | default('') }}
+export ORACLE_SID={{ oracle_sid | default('') }}
+export ORACLE_UNQNAME={{ oracle_unqname | default('') }}
+export NLS_DATE_FORMAT='DD/MM/YYYY HH24:MI:SS'
+export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+
+# Prompt
+export PS1="\[\e[38;1m\]\u@\[\e[34;1m\]\h [\$ORACLE_SID] \$PWD> \[\e[0m\]"
+
+# Path
+export PATH=$ORACLE_HOME/bin:$ORACLE_HOME/OPatch:$PATH:$HOME/.local/bin:$HOME/bin
+
+# History
+export HISTSIZE=5000
+export HISTTIMEFORMAT="%d/%m/%y %T "
+
+# Aliases
+alias sqlplus='rlwrap sqlplus'
+alias rman='rlwrap rman'
+alias asmcmd='rlwrap asmcmd'
+
+echo " "
+echo " "
+echo "---------------------------------------------------------------------------------------------------------------"
+echo " "
+ps -ef | grep pmon | grep -v grep
+echo " "
+echo " "
+echo "---------------------------------------------------------------------------------------------------------------"
+echo " "
+echo " "
+echo " Hostname        : $(hostname)"
+echo " ORACLE_UNQNAME  : $ORACLE_UNQNAME"
+echo " ORACLE_SID      : $ORACLE_SID"
+echo " ORACLE_HOME     : $ORACLE_HOME"
+echo " USER            : $(whoami)"
+echo -e "\033[0;{{ oracle_env_color }}m AMBIENTE        : {{ oracle_env_name }} \033[0m"
+echo " "
+echo " "

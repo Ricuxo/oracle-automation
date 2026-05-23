@@ -1,0 +1,42 @@
+---
+- name: Install common packages
+  ansible.builtin.dnf:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Ensure chrony is installed
+  ansible.builtin.dnf:
+    name: chrony
+    state: present
+
+- name: Configure chrony
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart chronyd
+
+- name: Ensure chronyd is enabled and started
+  ansible.builtin.service:
+    name: chronyd
+    state: started
+    enabled: true
+
+- name: Disable firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: stopped
+    enabled: false
+  when: disable_firewall | bool
+
+- name: Disable SELinux
+  ansible.posix.selinux:
+    state: disabled
+  when: disable_selinux | bool
+  notify: reboot host

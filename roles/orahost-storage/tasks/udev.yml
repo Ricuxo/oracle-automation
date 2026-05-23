@@ -1,0 +1,21 @@
+---
+- name: Coletar SCSI ID dos discos ASM
+  ansible.builtin.command: /usr/lib/udev/scsi_id -g -u -d {{ item.device }}
+  loop: "{{ asm_disks }}"
+  loop_control:
+    label: "{{ item.device }}"
+  register: scsi_ids
+  changed_when: false
+
+- name: Gerar regras udev para discos ASM
+  ansible.builtin.template:
+    src: udev_asm.rules.j2
+    dest: /etc/udev/rules.d/99-oracle-asmdevices.rules
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload udev rules
+
+- name: Recarregar e aplicar regras udev
+  ansible.builtin.command: udevadm trigger --type=devices --action=change
+  changed_when: false

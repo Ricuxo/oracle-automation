@@ -1,0 +1,32 @@
+---
+# Pacotes genéricos a instalar
+common_packages:
+  - vim
+  - curl
+  - wget
+  - unzip
+  - zip
+  - tar
+  - bzip2
+  - net-tools
+  - bind-utils
+  - telnet
+  - sysstat
+  - iotop
+  - lsof
+  - strace
+  - tcpdump
+  - chrony
+
+# NTP
+ntp_service: chronyd
+ntp_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+
+# Segurança
+disable_firewall: true
+disable_selinux: true
+
+# Timezone
+timezone: America/Sao_Paulo

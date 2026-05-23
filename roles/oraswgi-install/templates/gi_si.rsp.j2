@@ -1,0 +1,30 @@
+# Gerado pelo Ansible - nao editar manualmente
+oracle.install.responseFileVersion=/oracle/install/rspfmt_crsinstall_response_schema_v12.2.0
+
+#-------------------------------------------------------------------------------
+# INSTALL OPTIONS
+#-------------------------------------------------------------------------------
+ORACLE_BASE={{ oracle_base }}
+oracle.install.option=HA_CONFIG
+ORACLE_HOSTNAME={{ ansible_hostname }}
+ORACLE_HOME={{ oracle_home_gi }}
+oracle.install.asm.OSDBA={{ asmdba_group | default('asmdba') }}
+oracle.install.asm.OSOPER={{ asmoper_group | default('asmoper') }}
+oracle.install.asm.OSASM={{ asmadmin_group | default('asmadmin') }}
+
+#-------------------------------------------------------------------------------
+# ASM CONFIGURATION
+#-------------------------------------------------------------------------------
+oracle.install.asm.diskGroup.name={{ oracle_asm_init_dg }}
+oracle.install.asm.diskGroup.redundancy={{ oracle_asm_diskgroups | selectattr('diskgroup', 'equalto', oracle_asm_init_dg) | map(attribute='properties') | flatten | map(attribute='redundancy') | first }}
+oracle.install.asm.diskGroup.AUSize={{ oracle_asm_diskgroups | selectattr('diskgroup', 'equalto', oracle_asm_init_dg) | map(attribute='properties') | flatten | map(attribute='ausize') | first }}
+oracle.install.asm.diskGroup.disks={{ oracle_asm_diskgroups | selectattr('diskgroup', 'equalto', oracle_asm_init_dg) | map(attribute='disk') | flatten | map(attribute='device') | join(',') }}
+oracle.install.asm.diskGroup.diskDiscoveryString=/dev/sd*
+oracle.install.asm.monitorPassword={{ vault_sys_password }}
+oracle.install.asm.configureGIMR=false
+
+#-------------------------------------------------------------------------------
+# INVENTORY
+#-------------------------------------------------------------------------------
+INVENTORY_LOCATION={{ oracle_inventory }}
+SELECTED_LANGUAGES=en,pt_BR

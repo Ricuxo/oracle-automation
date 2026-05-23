@@ -1,0 +1,5 @@
+---
+vault_oracle_os_password: "changeme"
+vault_sys_password: "changeme"
+vault_system_password: "changeme"
+vault_pdbadmin_password: "changeme"

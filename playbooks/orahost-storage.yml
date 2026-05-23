@@ -1,0 +1,11 @@
+---
+- name: orahost-storage
+  hosts: all
+  roles:
+    - orahost-storage
+
+- name: orahost-ssh (RAC only)
+  hosts: rac
+  roles:
+    - role: orahost-ssh
+      when: configure_cluster | bool

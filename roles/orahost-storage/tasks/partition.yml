@@ -1,0 +1,23 @@
+---
+- name: Verificar se disco ja possui tabela de particao
+  ansible.builtin.command: parted -s {{ item.1.device }} print
+  register: parted_output
+  changed_when: false
+  failed_when: false
+  loop: "{{ oracle_asm_diskgroups | subelements('disk') }}"
+  loop_control:
+    label: "{{ item.1.device }}"
+
+- name: Criar tabela de particao GPT nos discos ASM
+  ansible.builtin.command: parted -s {{ item.item.1.device }} mklabel gpt
+  when: "'unrecognised disk label' in item.stdout or item.rc != 0"
+  loop: "{{ parted_output.results }}"
+  loop_control:
+    label: "{{ item.item.1.device }}"
+
+- name: Criar particao primaria nos discos ASM
+  ansible.builtin.command: parted -s {{ item.item.1.device }} mkpart primary 1MiB 100%
+  when: "'unrecognised disk label' in item.stdout or item.rc != 0"
+  loop: "{{ parted_output.results }}"
+  loop_control:
+    label: "{{ item.item.1.device }}"

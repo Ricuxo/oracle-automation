@@ -1,0 +1,8 @@
+---
+# Usuário que terá SSH sem senha configurado
+oracle_user: oracle
+oracle_user_home: /home/oracle
+
+# Tipo de chave SSH
+ssh_key_type: rsa
+ssh_key_bits: 4096

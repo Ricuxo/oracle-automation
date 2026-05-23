@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: orahost-ssh
+  description: Configuracao de SSH sem senha entre nos RAC
+  min_ansible_version: "2.14"
+  platforms:
+    - name: OracleLinux
+      versions:
+        - "7"
+        - "8"
+        - "9"
+  galaxy_tags:
+    - oracle
+    - linux
+    - rac
+    - ssh
+
+dependencies:
+  - role: orahost

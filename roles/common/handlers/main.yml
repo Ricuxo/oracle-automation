@@ -1,0 +1,12 @@
+---
+- name: restart chronyd
+  ansible.builtin.service:
+    name: chronyd
+    state: restarted
+
+- name: reboot host
+  ansible.builtin.reboot:
+    msg: "Reboot iniciado pelo Ansible - alteracao de SELinux"
+    reboot_timeout: 300
+    post_reboot_delay: 30
+  when: not ansible_check_mode

@@ -1,0 +1,8 @@
+---
+- import_playbook: common.yml
+- import_playbook: orahost.yml
+- import_playbook: orahost-storage.yml
+- import_playbook: oraswgi-install.yml
+- import_playbook: oraasm-diskgroups.yml
+- import_playbook: oraswdb-install.yml
+- import_playbook: oradb-create.yml

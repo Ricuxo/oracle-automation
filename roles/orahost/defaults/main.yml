@@ -1,0 +1,132 @@
+---
+# Usuário e grupos Oracle
+oracle_user: oracle
+oracle_user_uid: 54321
+oracle_group: oinstall
+oracle_group_gid: 54321
+
+oracle_groups:
+  - { group: oinstall,  gid: 54321 }
+  - { group: dba,       gid: 54322 }
+  - { group: oper,      gid: 54323 }
+  - { group: backupdba, gid: 54324 }
+  - { group: dgdba,     gid: 54325 }
+  - { group: kmdba,     gid: 54326 }
+  - { group: asmdba,    gid: 54327 }
+  - { group: asmoper,   gid: 54328 }
+  - { group: asmadmin,  gid: 54329 }
+
+# Diretórios Oracle
+oracle_base: /u01/app/oracle
+oracle_inventory: /u01/app/oraInventory
+oracle_stage: /u01/stage
+
+oracle_directories:
+  - { path: "{{ oracle_base }}",      owner: "{{ oracle_user }}", group: "{{ oracle_group }}", mode: '0755' }
+  - { path: "{{ oracle_inventory }}", owner: "{{ oracle_user }}", group: "{{ oracle_group }}", mode: '0755' }
+  - { path: "{{ oracle_stage }}",     owner: "{{ oracle_user }}", group: "{{ oracle_group }}", mode: '0755' }
+
+# Parâmetros de kernel (sysctl)
+oracle_sysctl:
+  - { name: kernel.shmall,                    value: 1073741824 }
+  - { name: kernel.shmmax,                    value: 4398046511104 }
+  - { name: kernel.shmmni,                    value: 4096 }
+  - { name: kernel.sem,                       value: "250 32000 100 128" }
+  - { name: kernel.panic_on_oops,             value: 1 }
+  - { name: net.ipv4.ip_local_port_range,     value: "9000 65500" }
+  - { name: net.ipv4.conf.all.rp_filter,      value: 2 }
+  - { name: net.ipv4.conf.default.rp_filter,  value: 2 }
+  - { name: net.core.rmem_default,            value: 262144 }
+  - { name: net.core.rmem_max,                value: 4194304 }
+  - { name: net.core.wmem_default,            value: 262144 }
+  - { name: net.core.wmem_max,                value: 1048576 }
+  - { name: fs.aio-max-nr,                    value: 1048576 }
+  - { name: fs.file-max,                      value: 6815744 }
+  - { name: vm.swappiness,                    value: 10 }
+
+# Limits do Oracle
+oracle_limits:
+  - { domain: "{{ oracle_user }}", type: soft, item: nofile,   value: 1024      }
+  - { domain: "{{ oracle_user }}", type: hard, item: nofile,   value: 65536     }
+  - { domain: "{{ oracle_user }}", type: soft, item: nproc,    value: 16384     }
+  - { domain: "{{ oracle_user }}", type: hard, item: nproc,    value: 16384     }
+  - { domain: "{{ oracle_user }}", type: soft, item: stack,    value: 10240     }
+  - { domain: "{{ oracle_user }}", type: hard, item: stack,    value: 32768     }
+  - { domain: "{{ oracle_user }}", type: soft, item: memlock,  value: 134217728 }
+  - { domain: "{{ oracle_user }}", type: hard, item: memlock,  value: 134217728 }
+  - { domain: "{{ oracle_user }}", type: soft, item: data,     value: unlimited }
+  - { domain: "{{ oracle_user }}", type: hard, item: data,     value: unlimited }
+
+# Hugepages (% da RAM total)
+hugepages_percent: 50
+
+# Transparent Hugepages
+disable_thp: true
+
+# Pacotes OL8 - fonte: oracle-base.com/articles/19c/oracle-db-21c-installation-on-oracle-linux-8
+oracle_packages_ol8:
+  - bc
+  - binutils
+  - compat-openssl10
+  - elfutils-libelf
+  - glibc
+  - glibc-devel
+  - ksh
+  - libaio
+  - libXrender
+  - libX11
+  - libXau
+  - libXi
+  - libXtst
+  - libgcc
+  - libnsl
+  - libstdc++
+  - libxcb
+  - libibverbs
+  - make
+  - policycoreutils
+  - policycoreutils-python-utils
+  - smartmontools
+  - sysstat
+  - unixODBC
+
+# Pacotes OL9 - fonte: oracle-base.com/articles/19c/oracle-db-19c-installation-on-oracle-linux-9
+oracle_packages_ol9:
+  - bc
+  - binutils
+  - compat-openssl11
+  - elfutils-libelf
+  - fontconfig
+  - glibc
+  - glibc-devel
+  - glibc-headers
+  - ksh
+  - libaio
+  - libasan
+  - liblsan
+  - libX11
+  - libXau
+  - libXi
+  - libXrender
+  - libXtst
+  - libxcrypt-compat
+  - libgcc
+  - libibverbs
+  - libnsl
+  - libnsl2
+  - librdmacm
+  - libstdc++
+  - libvirt-libs
+  - libxcb
+  - make
+  - net-tools
+  - nfs-utils
+  - policycoreutils
+  - policycoreutils-python-utils
+  - smartmontools
+  - sysstat
+  - gcc
+  - unixODBC
+
+# Lista final resolvida por versão do OS
+oracle_packages: "{{ oracle_packages_ol8 if ansible_distribution_major_version == '8' else oracle_packages_ol9 if ansible_distribution_major_version == '9' else [] }}"

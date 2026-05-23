@@ -1,0 +1,13 @@
+# Vault descriptografado
+inventories/*/group_vars/vault.yml
+
+# Arquivos de retry
+*.retry
+
+# Binários Oracle
+files/binarios/*.zip
+
+# Cache
+.cache/
+__pycache__/
+*.pyc

@@ -1,0 +1,31 @@
+---
+# Versão do Grid Infrastructure
+oracle_gi_version: "12.2.0.1.0"
+oracle_gi_version_short: "{{ oracle_gi_version.split('.')[0:4] | join('.') }}"
+
+# Home do Grid Infrastructure
+oracle_home_gi: "/u01/app/{{ oracle_gi_version }}/grid"
+
+# Diretório de stage dos binários
+oracle_stage: /u01/stage
+
+# Arquivos de instalação do GI
+oracle_gi_zip:
+  "12.2.0.1.0":
+    - linuxx64_12201_grid_home.zip
+  "19.3.0.0.0":
+    - LINUX.X64_193000_grid_home.zip
+  "21.3.0.0.0":
+    - LINUX.X64_213000_grid_home.zip
+
+# Configurações RAC
+oracle_scan: your.scan.address
+oracle_scan_port: 1521
+oracle_vip: "-vip"
+oracle_ic_net: "192.168.100.{{ ansible_all_ipv4_addresses[0].split('.')[-1] }}"
+
+# Configurações ASM inicial (CRS para RAC, DATA para SI Restart)
+oracle_asm_init_dg: "{% if configure_cluster | bool %}CRS{% else %}DATA{% endif %}"
+
+# Diretório de response files
+oracle_rsp_stage: "{{ oracle_stage }}/rsp"

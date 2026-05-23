@@ -1,0 +1,29 @@
+---
+# Usuário SSH
+
+# Timezone
+timezone: America/Sao_Paulo
+
+# Oracle base
+oracle_base: /u01/app/oracle
+oracle_inventory: /u01/app/oraInventory
+
+# Diretório de staging dos binários
+staging_dir: /u01/stage
+
+# Ambiente
+oracle_env_name: "Desenvolvimento"
+oracle_env_color: "32"  # 32=verde, 33=amarelo, 31=vermelho
+
+# OS suportados
+supported_os:
+
+  - OracleLinux8
+
+# Conexao SSH
+ansible_user: root
+
+# Python interpreter
+
+# Suprimir warning de interpreter discovery
+ansible_python_interpreter: auto_silent

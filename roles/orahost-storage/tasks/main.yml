@@ -1,0 +1,12 @@
+---
+- name: Particionar discos ASM
+  ansible.builtin.include_tasks: partition.yml
+  when: oracle_asm_diskgroups | length > 0
+
+- name: Configurar storage ASM via ASMLib
+  ansible.builtin.include_tasks: asmlib.yml
+  when: asm_disk_management == 'asmlib'
+
+- name: Configurar storage ASM via udev
+  ansible.builtin.include_tasks: udev.yml
+  when: asm_disk_management == 'udev'

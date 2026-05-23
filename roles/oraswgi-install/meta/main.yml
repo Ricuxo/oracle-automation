@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: oraswgi-install
+  description: Instalacao do Oracle Grid Infrastructure (RAC e Oracle Restart)
+  min_ansible_version: "2.14"
+  platforms:
+    - name: OracleLinux
+      versions:
+        - "8"
+        - "9"
+  galaxy_tags:
+    - oracle
+    - grid
+    - rac
+    - asm
+
+dependencies:
+  - role: orahost
+  - role: orahost-storage

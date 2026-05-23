@@ -1,0 +1,48 @@
+---
+- name: orahost-ssh | Executar apenas em ambiente RAC
+  ansible.builtin.assert:
+    that:
+      - configure_cluster | bool
+    fail_msg: "orahost-ssh deve ser executado apenas em ambiente RAC (configure_cluster=true)"
+
+- name: orahost-ssh | Gerar chave SSH para usuario oracle
+  ansible.builtin.user:
+    name: "{{ oracle_user }}"
+    generate_ssh_key: true
+    ssh_key_type: "{{ ssh_key_type }}"
+    ssh_key_bits: "{{ ssh_key_bits }}"
+    ssh_key_file: .ssh/id_rsa
+
+- name: orahost-ssh | Coletar chaves publicas de todos os nos RAC
+  ansible.builtin.slurp:
+    src: "{{ oracle_user_home }}/.ssh/id_rsa.pub"
+  register: ssh_public_keys
+
+- name: orahost-ssh | Distribuir chaves publicas entre os nos RAC
+  ansible.posix.authorized_key:
+    user: "{{ oracle_user }}"
+    key: "{{ hostvars[item]['ssh_public_keys']['content'] | b64decode }}"
+    state: present
+  loop: "{{ ansible_play_hosts }}"
+
+- name: orahost-ssh | Configurar known_hosts entre os nos RAC
+  ansible.builtin.known_hosts:
+    name: "{{ hostvars[item]['ansible_hostname'] }}"
+    key: "{{ lookup('pipe', 'ssh-keyscan -t rsa ' + hostvars[item]['ansible_host']) }}"
+    state: present
+    path: "{{ oracle_user_home }}/.ssh/known_hosts"
+  loop: "{{ ansible_play_hosts }}"
+
+- name: orahost-ssh | Ajustar permissoes do diretorio .ssh
+  ansible.builtin.file:
+    path: "{{ oracle_user_home }}/.ssh"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0700'
+
+- name: orahost-ssh | Ajustar permissoes do known_hosts
+  ansible.builtin.file:
+    path: "{{ oracle_user_home }}/.ssh/known_hosts"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0644'

@@ -1,0 +1,5 @@
+---
+- name: oradb-create
+  hosts: all
+  roles:
+    - oradb-create

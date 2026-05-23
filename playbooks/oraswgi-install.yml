@@ -1,0 +1,5 @@
+---
+- name: oraswgi-install
+  hosts: all
+  roles:
+    - oraswgi-install

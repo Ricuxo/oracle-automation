@@ -1,0 +1,88 @@
+---
+- name: oraswgi-install | Validar storage_type
+  ansible.builtin.assert:
+    that:
+      - storage_type in ['asm', 'fs']
+    fail_msg: "storage_type deve ser 'asm' ou 'fs'"
+
+- name: oraswgi-install | Executar apenas quando storage_type=asm
+  ansible.builtin.assert:
+    that:
+      - storage_type == 'asm'
+    fail_msg: "oraswgi-install requer storage_type=asm"
+
+- name: oraswgi-install | Criar diretório oracle_home_gi
+  ansible.builtin.file:
+    path: "{{ oracle_home_gi }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0755'
+    state: directory
+
+- name: oraswgi-install | Criar diretório de response files
+  ansible.builtin.file:
+    path: "{{ oracle_rsp_stage }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0755'
+    state: directory
+
+- name: oraswgi-install | Transferir binários do GI
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ oracle_stage }}/{{ item }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0644'
+  loop: "{{ oracle_gi_zip[oracle_gi_version] }}"
+
+- name: oraswgi-install | Descompactar binários do GI
+  ansible.builtin.unarchive:
+    src: "{{ oracle_stage }}/{{ item }}"
+    dest: "{{ oracle_home_gi }}"
+    remote_src: true
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+  loop: "{{ oracle_gi_zip[oracle_gi_version] }}"
+
+- name: oraswgi-install | Gerar response file GI
+  ansible.builtin.template:
+    src: "{% if configure_cluster | bool %}gi_rac.rsp.j2{% else %}gi_si.rsp.j2{% endif %}"
+    dest: "{{ oracle_rsp_stage }}/gi_install.rsp"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: '0640'
+
+- name: oraswgi-install | Executar instalação do GI
+  ansible.builtin.shell: |
+    {{ oracle_home_gi }}/gridSetup.sh -silent \
+    -responseFile {{ oracle_rsp_stage }}/gi_install.rsp \
+    -ignorePrereqFailure \
+    2>&1 | tee {{ oracle_stage }}/gi_install.log
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: gi_install
+  failed_when:
+    - gi_install.rc != 0
+    - "'Successfully Setup Software' not in gi_install.stdout"
+
+- name: oraswgi-install | Executar root.sh no primeiro nó
+  ansible.builtin.shell: "{{ oracle_home_gi }}/root.sh"
+  when: not configure_cluster | bool or ansible_hostname == ansible_play_hosts[0]
+
+- name: oraswgi-install | Executar root.sh nos demais nós RAC
+  ansible.builtin.shell: "{{ oracle_home_gi }}/root.sh"
+  when: configure_cluster | bool and ansible_hostname != ansible_play_hosts[0]
+
+- name: oraswgi-install | Executar gridSetup.sh -executeConfigTools
+  ansible.builtin.shell: |
+    {{ oracle_home_gi }}/gridSetup.sh -silent \
+    -executeConfigTools \
+    -responseFile {{ oracle_rsp_stage }}/gi_install.rsp \
+    2>&1 | tee {{ oracle_stage }}/gi_configtools.log
+  become: true
+  become_user: "{{ oracle_user }}"
+  register: gi_configtools
+  failed_when:
+    - gi_configtools.rc != 0
+    - "'Successfully Setup Software' not in gi_configtools.stdout"

@@ -1,0 +1,39 @@
+# Gerado pelo Ansible - nao editar manualmente
+oracle.install.responseFileVersion=/oracle/install/rspfmt_crsinstall_response_schema_v12.2.0
+
+#-------------------------------------------------------------------------------
+# INSTALL OPTIONS
+#-------------------------------------------------------------------------------
+ORACLE_BASE={{ oracle_base }}
+oracle.install.option=CRS_CONFIG
+ORACLE_HOSTNAME={{ ansible_hostname }}
+ORACLE_HOME={{ oracle_home_gi }}
+oracle.install.asm.OSDBA={{ asmdba_group | default('asmdba') }}
+oracle.install.asm.OSOPER={{ asmoper_group | default('asmoper') }}
+oracle.install.asm.OSASM={{ asmadmin_group | default('asmadmin') }}
+
+#-------------------------------------------------------------------------------
+# CLUSTER CONFIGURATION
+#-------------------------------------------------------------------------------
+oracle.install.crs.config.gpnp.scanName={{ oracle_scan }}
+oracle.install.crs.config.gpnp.scanPort={{ oracle_scan_port }}
+oracle.install.crs.config.clusterName={{ cluster_name | default('oracle-cluster') }}
+oracle.install.crs.config.clusterNodes={{ ansible_play_hosts | map('extract', hostvars, 'ansible_hostname') | zip(ansible_play_hosts | map('extract', hostvars, 'ansible_hostname') | map('regex_replace', '$', oracle_vip)) | map('join', ':') | join(',') }}
+oracle.install.crs.config.networkInterfaceList={{ oracle_cluster_interconnect | default('eth0:' + oracle_ic_net + ':3,eth1:' + ansible_default_ipv4.network + ':1') }}
+
+#-------------------------------------------------------------------------------
+# ASM CONFIGURATION
+#-------------------------------------------------------------------------------
+oracle.install.asm.diskGroup.name={{ oracle_asm_init_dg }}
+oracle.install.asm.diskGroup.redundancy={{ oracle_asm_diskgroups | selectattr('diskgroup', 'equalto', oracle_asm_init_dg) | map(attribute='properties') | flatten | map(attribute='redundancy') | first }}
+oracle.install.asm.diskGroup.AUSize={{ oracle_asm_diskgroups | selectattr('diskgroup', 'equalto', oracle_asm_init_dg) | map(attribute='properties') | flatten | map(attribute='ausize') | first }}
+oracle.install.asm.diskGroup.disks={{ oracle_asm_diskgroups | selectattr('diskgroup', 'equalto', oracle_asm_init_dg) | map(attribute='disk') | flatten | map(attribute='asmlabel') | map('regex_replace', '^', 'ORCL:') | join(',') }}
+oracle.install.asm.diskGroup.diskDiscoveryString=ORCL:*
+oracle.install.asm.monitorPassword={{ vault_sys_password }}
+oracle.install.asm.configureGIMR=false
+
+#-------------------------------------------------------------------------------
+# INVENTORY
+#-------------------------------------------------------------------------------
+INVENTORY_LOCATION={{ oracle_inventory }}
+SELECTED_LANGUAGES=en,pt_BR

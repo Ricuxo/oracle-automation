@@ -1,0 +1,50 @@
+---
+- name: Instalar kmod-oracleasm
+  ansible.builtin.dnf:
+    name: kmod-oracleasm
+    state: present
+
+- name: Instalar oracleasm-support
+  ansible.builtin.dnf:
+    name: "{{ asmlibsupport_rpm[ansible_distribution_major_version] }}"
+    state: present
+    disable_gpg_check: true
+
+- name: Instalar oracleasmlib
+  ansible.builtin.dnf:
+    name: "{{ asmlib_rpm[ansible_distribution_major_version] }}"
+    state: present
+    disable_gpg_check: true
+
+- name: Configurar oracleasm
+  ansible.builtin.template:
+    src: oracleasm.conf.j2
+    dest: /etc/sysconfig/oracleasm
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Inicializar oracleasm
+  ansible.builtin.command: oracleasm init
+  changed_when: false
+
+- name: Criar labels ASMLib nos discos
+  ansible.builtin.command: >
+    oracleasm createdisk {{ item.1.asmlabel }} {{ item.1.device }}1
+  loop: "{{ oracle_asm_diskgroups | subelements('disk') }}"
+  loop_control:
+    label: "{{ item.1.asmlabel }}"
+  register: asmlib_create
+  failed_when:
+    - asmlib_create.rc != 0
+    - "'already labeled' not in asmlib_create.stderr"
+  changed_when: "'Writing disk header' in asmlib_create.stdout"
+
+- name: Listar discos ASMLib criados
+  ansible.builtin.command: oracleasm listdisks
+  register: asmlib_listdisks
+  changed_when: false
+
+- name: Exibir discos ASMLib
+  ansible.builtin.debug:
+    msg: "{{ asmlib_listdisks.stdout_lines }}"
