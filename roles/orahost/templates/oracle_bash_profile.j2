@@ -14,17 +14,23 @@ export ORACLE_UNQNAME={{ oracle_unqname | default('') }}
 export NLS_DATE_FORMAT='DD/MM/YYYY HH24:MI:SS'
 export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
 
+{% if cv_assume_distid is defined and cv_assume_distid | length > 0 %}
+# Necessario para Oracle 19.3 base em OL8/OL9
+export CV_ASSUME_DISTID={{ cv_assume_distid }}
+{% endif %}
+
 # Temp dirs - Oracle recommendation: use dedicated mount point
 export TMP={{ oracle_tmp_dir | default('/u01/tmp') }}
 export TEMP=$TMP
 export TMPDIR=$TMP
 export TEMPDIR=$TMP
 
-# Prompt
-export PS1="\[\e[38;1m\]\u@\[\e[34;1m\]\h [\$ORACLE_SID] \$PWD> \[\e[0m\]"
-
 # Path
+{% if oracle_home is defined and oracle_home | length > 0 %}
 export PATH=$ORACLE_HOME/bin:$ORACLE_HOME/OPatch:$PATH:$HOME/.local/bin:$HOME/bin
+{% else %}
+export PATH=$PATH:$HOME/.local/bin:$HOME/bin
+{% endif %}
 
 # History
 export HISTSIZE=5000
@@ -35,21 +41,26 @@ alias sqlplus='rlwrap sqlplus'
 alias rman='rlwrap rman'
 alias asmcmd='rlwrap asmcmd'
 
-echo " "
-echo " "
+# Prompt
+export PS1="\[\e[38;1m\]\u@\[\e[34;1m\]\h [\$ORACLE_SID] \$PWD> \[\e[0m\]"
+
+# Banner
+echo ""
 echo "---------------------------------------------------------------------------------------------------------------"
-echo " "
-ps -ef | grep pmon | grep -v grep
-echo " "
-echo " "
+echo ""
+PMON=$(ps -ef | grep pmon | grep -v grep)
+if [ -n "$PMON" ]; then
+    echo "$PMON"
+else
+    echo " Nenhuma instancia Oracle ativa"
+fi
+echo ""
 echo "---------------------------------------------------------------------------------------------------------------"
-echo " "
-echo " "
+echo ""
 echo " Hostname        : $(hostname)"
 echo " ORACLE_UNQNAME  : $ORACLE_UNQNAME"
 echo " ORACLE_SID      : $ORACLE_SID"
 echo " ORACLE_HOME     : $ORACLE_HOME"
 echo " USER            : $(whoami)"
 echo -e "\033[0;{{ oracle_env_color }}m AMBIENTE        : {{ oracle_env_name }} \033[0m"
-echo " "
-echo " "
+echo ""

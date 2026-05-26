@@ -17,6 +17,7 @@
     home: /home/{{ oracle_user }}
     create_home: true
     state: present
+    password: "{{ vault_oracle_os_password | password_hash('sha512') }}"
 
 - name: Configurar storage /u01
   ansible.builtin.include_tasks: storage.yml
@@ -34,6 +35,15 @@
     mode: "{{ item.mode }}"
     state: directory
   loop: "{{ oracle_directories }}"
+
+- name: Instalar oracle-database-preinstall RPM
+  ansible.builtin.dnf:
+    name: "oracle-database-preinstall-19c"
+    state: present
+    enablerepo: "ol{{ ansible_distribution_major_version }}_appstream"
+  when:
+    - use_preinstall_rpm | bool
+    - ansible_distribution == 'OracleLinux'
 
 - name: Instalar pacotes requeridos pelo Oracle
   ansible.builtin.dnf:

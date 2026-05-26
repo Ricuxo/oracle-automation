@@ -5,8 +5,8 @@ oracle_gi_version: "19.3.0.0.0"
 
 # Path do Grid Home calculado automaticamente
 # Formato: major.RU.0 (ex: 19.3.0, 21.3.0)
-oracle_gi_version_path: "{{ oracle_gi_version.split('.')[0] }}.{{ oracle_gi_version.split('.')[1] }}.{{ oracle_gi_version.split('.')[2] }}"
-oracle_home_gi: "{{ oracle_base }}/product/{{ oracle_gi_version_path }}/grid"
+oracle_gi_version_path: "{{ oracle_gi_version.split('.')[0] }}.{{ oracle_gi_version.split('.')[1] }}.{{ oracle_gi_version.split('.')[2] }}.{{ oracle_gi_version.split('.')[3] }}"
+oracle_home_gi: "{{ oracle_base }}/{{ oracle_gi_version_path }}/grid"
 
 # Arquivo zip do instalador - deve ser colocado em files/binarios/
 # O usuário define o nome do zip no group_vars
@@ -31,3 +31,6 @@ oracle_ic_net: "192.168.100.{{ ansible_all_ipv4_addresses[0].split('.')[-1] }}"
 # Diskgroup inicial
 # RAC: CRS, SI: DATA
 oracle_asm_init_dg: "{% if configure_cluster | bool %}CRS{% else %}DATA{% endif %}"
+
+# Oracle Base do Grid Infrastructure (separado do DB)
+oracle_base_gi: "{{ oracle_base }}"

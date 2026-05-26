@@ -64,70 +64,25 @@ hugepages_percent: 50
 # Transparent Hugepages
 disable_thp: true
 
-# Pacotes OL8 - fonte: oracle-base.com/articles/19c/oracle-db-21c-installation-on-oracle-linux-8
-oracle_packages_ol8:
-  - bc
-  - binutils
-  - compat-openssl10
-  - elfutils-libelf
-  - glibc
-  - glibc-devel
-  - ksh
-  - libaio
-  - libXrender
-  - libX11
-  - libXau
-  - libXi
-  - libXtst
-  - libgcc
-  - libnsl
-  - libstdc++
-  - libxcb
-  - libibverbs
-  - make
-  - policycoreutils
-  - policycoreutils-python-utils
-  - smartmontools
-  - sysstat
-  - unixODBC
+# Usar oracle-database-preinstall-19c como base (recomendado Oracle)
+# Resolve automaticamente todas as dependências incluindo libaio-devel, glibc-static workarounds, etc.
+use_preinstall_rpm: true
 
-# Pacotes OL9 - fonte: oracle-base.com/articles/19c/oracle-db-19c-installation-on-oracle-linux-9
+# Pacotes complementares OL8 - instalados além do preinstall RPM
+oracle_packages_ol8:
+  - compat-openssl10
+  - libvirt-libs
+  - nfs-utils
+  - net-tools
+
+# Pacotes complementares OL9 - instalados além do preinstall RPM
 oracle_packages_ol9:
-  - bc
-  - binutils
   - compat-openssl11
-  - elfutils-libelf
-  - fontconfig
-  - glibc
-  - glibc-devel
-  - glibc-headers
-  - ksh
-  - libaio
-  - libasan
-  - liblsan
-  - libX11
-  - libXau
-  - libXi
-  - libXrender
-  - libXtst
-  - libxcrypt-compat
-  - libgcc
-  - libibverbs
-  - libnsl
+  - libvirt-libs
+  - nfs-utils
+  - net-tools
   - libnsl2
   - librdmacm
-  - libstdc++
-  - libvirt-libs
-  - libxcb
-  - make
-  - net-tools
-  - nfs-utils
-  - policycoreutils
-  - policycoreutils-python-utils
-  - smartmontools
-  - sysstat
-  - gcc
-  - unixODBC
 
 # Lista final resolvida por versão do OS
 oracle_packages: "{{ oracle_packages_ol8 if ansible_distribution_major_version == '8' else oracle_packages_ol9 if ansible_distribution_major_version == '9' else [] }}"
@@ -149,3 +104,7 @@ swap_size_mb: "{{ [ansible_memtotal_mb, 16384] | min }}"
 
 # Diretório temporário para instalação Oracle
 oracle_tmp_dir: /u01/tmp
+
+# CV_ASSUME_DISTID: necessário para instalar Oracle < 19.7 em OL8/OL9
+# O instalador 19.3 base não certifica OL8/OL9 nativamente
+cv_assume_distid: "{% if ansible_distribution_major_version | int >= 8 %}OEL7.8{% endif %}"

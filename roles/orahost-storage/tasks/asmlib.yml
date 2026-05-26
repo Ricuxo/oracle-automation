@@ -70,7 +70,7 @@
   register: asmlib_create
   failed_when:
     - asmlib_create.rc != 0
-    - "'already labeled' not in asmlib_create.stderr"
+    - "'already labeled' not in asmlib_create.stdout"
   changed_when: "'Writing disk header' in asmlib_create.stdout"
 
 - name: orahost-storage | asmlib v3 | Scan discos ASMLib
